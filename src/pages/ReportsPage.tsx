@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, Printer, Calendar, User } from 'lucide-react';
+import { FileText, Download, Printer, Calendar, User, Banknote } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Select from '../components/Select';
@@ -99,10 +99,21 @@ const ReportsPage: React.FC = () => {
       render: (trip: Trip) => {
         const vehicle = getVehicle(trip.vehicleId);
         if (!vehicle) return <span>-</span>;
-        
+
         const distance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
         const amount = distance * vehicle.reimbursementRate;
         return <span className="font-medium">{amount.toFixed(2)} €</span>;
+      },
+    },
+    {
+      key: 'toll',
+      header: 'Pedaggio (€)',
+      render: (trip: Trip) => {
+        if (trip.hasToll && trip.tollAmount) {
+          const toll = trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+          return <span className="font-medium text-amber-700">{toll.toFixed(2)} €</span>;
+        }
+        return <span className="text-gray-400">-</span>;
       },
     },
     {
@@ -189,7 +200,7 @@ const ReportsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
                 <div className="flex items-center">
                   <Calendar className="h-8 w-8 text-blue-500 mr-3" />
@@ -201,7 +212,7 @@ const ReportsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
+
               <div className="bg-green-50 p-4 rounded-lg border border-green-100">
                 <div className="flex items-center">
                   <User className="h-8 w-8 text-green-500 mr-3" />
@@ -213,17 +224,46 @@ const ReportsPage: React.FC = () => {
                   </div>
                 </div>
               </div>
-              
-              <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+
+              <div className="bg-teal-50 p-4 rounded-lg border border-teal-100">
                 <div className="flex items-center">
-                  <FileText className="h-8 w-8 text-purple-500 mr-3" />
+                  <FileText className="h-8 w-8 text-teal-500 mr-3" />
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700">Totale Rimborso</h3>
+                    <h3 className="text-sm font-medium text-gray-700">Rimborso Km</h3>
                     <p className="text-lg font-semibold text-gray-900">
                       {report.totalReimbursement.toFixed(2)} €
                     </p>
                   </div>
                 </div>
+              </div>
+
+              <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+                <div className="flex items-center">
+                  <Banknote className="h-8 w-8 text-amber-500 mr-3" />
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700">Pedaggi</h3>
+                    <p className="text-lg font-semibold text-gray-900">
+                      {report.totalTollFees.toFixed(2)} €
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-5 rounded-lg border-2 border-purple-200 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <div className="bg-purple-100 p-3 rounded-full">
+                    <FileText className="h-6 w-6 text-purple-600" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium text-gray-700">Totale Generale</h3>
+                    <p className="text-xs text-gray-600">Rimborso Chilometrico + Pedaggi</p>
+                  </div>
+                </div>
+                <p className="text-2xl font-bold text-purple-900">
+                  {(report.totalReimbursement + report.totalTollFees).toFixed(2)} €
+                </p>
               </div>
             </div>
 

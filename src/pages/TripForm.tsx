@@ -24,6 +24,10 @@ interface FormData {
   selectedDistanceId: string;
   useCustomOrigin: boolean;
   useCustomDestination: boolean;
+  hasToll: boolean;
+  tollEntryStation: string;
+  tollExitStation: string;
+  tollAmount: string;
 }
 
 interface FormErrors {
@@ -65,11 +69,16 @@ const TripForm: React.FC = () => {
     selectedDistanceId: '',
     useCustomOrigin: false,
     useCustomDestination: false,
+    hasToll: false,
+    tollEntryStation: '',
+    tollExitStation: '',
+    tollAmount: '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [availableVehicles, setAvailableVehicles] = useState<{ value: string; label: string; }[]>([]);
   const [reimbursement, setReimbursement] = useState<number | null>(null);
+  const [tollAmount, setTollAmount] = useState<number | null>(null);
   const [availableDistances, setAvailableDistances] = useState<{ value: string; label: string; }[]>([]);
 
   useEffect(() => {
@@ -102,6 +111,10 @@ const TripForm: React.FC = () => {
         selectedDistanceId: trip.selectedDistanceId || '',
         useCustomOrigin: trip.origin !== personHomeAddress,
         useCustomDestination: !savedRoute,
+        hasToll: trip.hasToll || false,
+        tollEntryStation: trip.tollEntryStation || '',
+        tollExitStation: trip.tollExitStation || '',
+        tollAmount: trip.tollAmount ? trip.tollAmount.toString() : '',
       });
     }
   }, [trip]);
@@ -125,7 +138,8 @@ const TripForm: React.FC = () => {
 
   useEffect(() => {
     calculateReimbursement();
-  }, [formData.distance, formData.vehicleId, formData.isRoundTrip]);
+    calculateTollAmount();
+  }, [formData.distance, formData.vehicleId, formData.isRoundTrip, formData.tollAmount, formData.hasToll]);
 
   const calculateReimbursement = () => {
     if (!formData.vehicleId || !formData.distance) {
@@ -148,6 +162,22 @@ const TripForm: React.FC = () => {
     const actualDistance = formData.isRoundTrip ? distance * 2 : distance;
     const amount = actualDistance * vehicle.reimbursementRate;
     setReimbursement(amount);
+  };
+
+  const calculateTollAmount = () => {
+    if (!formData.hasToll || !formData.tollAmount) {
+      setTollAmount(null);
+      return;
+    }
+
+    const toll = parseFloat(formData.tollAmount);
+    if (isNaN(toll)) {
+      setTollAmount(null);
+      return;
+    }
+
+    const actualToll = formData.isRoundTrip ? toll * 2 : toll;
+    setTollAmount(actualToll);
   };
 
   const updateAvailableVehicles = (personId: string) => {
@@ -285,14 +315,19 @@ const TripForm: React.FC = () => {
   const handleDistanceOptionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const distanceId = e.target.value;
     const route = getSavedRoute(formData.savedRouteId);
-    
+
     if (route && distanceId) {
       const selectedDistance = route.distances.find(d => d.id === distanceId);
       if (selectedDistance) {
+        const hasTollData = !!(selectedDistance.tollEntryStation || selectedDistance.tollExitStation || selectedDistance.tollAmount);
         setFormData(prev => ({
           ...prev,
           selectedDistanceId: distanceId,
           distance: selectedDistance.distance.toString(),
+          hasToll: hasTollData,
+          tollEntryStation: selectedDistance.tollEntryStation || '',
+          tollExitStation: selectedDistance.tollExitStation || '',
+          tollAmount: selectedDistance.tollAmount ? selectedDistance.tollAmount.toString() : '',
         }));
       }
     } else {
@@ -300,6 +335,10 @@ const TripForm: React.FC = () => {
         ...prev,
         selectedDistanceId: '',
         distance: '',
+        hasToll: false,
+        tollEntryStation: '',
+        tollExitStation: '',
+        tollAmount: '',
       }));
     }
   };
@@ -333,6 +372,10 @@ const TripForm: React.FC = () => {
       isRoundTrip: formData.isRoundTrip,
       savedRouteId: formData.savedRouteId || undefined,
       selectedDistanceId: formData.selectedDistanceId || undefined,
+      hasToll: formData.hasToll,
+      tollEntryStation: formData.hasToll ? formData.tollEntryStation : undefined,
+      tollExitStation: formData.hasToll ? formData.tollExitStation : undefined,
+      tollAmount: formData.hasToll && formData.tollAmount ? parseFloat(formData.tollAmount) : undefined,
     };
 
     if (isEditing && trip) {
@@ -612,18 +655,120 @@ const TripForm: React.FC = () => {
             </label>
           </div>
 
+          <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 mb-4">
+            <div className="mb-3">
+              <div className="flex items-center space-x-2">
+                <input
+                  id="hasToll"
+                  name="hasToll"
+                  type="checkbox"
+                  className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                  checked={formData.hasToll}
+                  onChange={handleChange}
+                />
+                <label htmlFor="hasToll" className="text-sm font-medium text-amber-900">
+                  Questo viaggio include pedaggi autostradali
+                </label>
+              </div>
+            </div>
+
+            {formData.hasToll && (
+              <div className="space-y-3">
+                <div className="p-3 bg-amber-100 rounded-md border border-amber-200">
+                  <div className="flex items-start">
+                    <Info className="h-4 w-4 text-amber-600 mr-2 mt-0.5 flex-shrink-0" />
+                    <div className="flex-grow">
+                      <p className="text-xs text-amber-800">
+                        I dati del pedaggio possono essere modificati per questo viaggio specifico.{' '}
+                        <a
+                          href="https://www.infoviaggiando.it/pedaggi"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline hover:text-amber-900 inline-flex items-center"
+                        >
+                          Consulta qui gli importi aggiornati
+                          <ExternalLink size={12} className="ml-1" />
+                        </a>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <Input
+                    id="tollEntryStation"
+                    name="tollEntryStation"
+                    label="Casello di Entrata"
+                    value={formData.tollEntryStation}
+                    onChange={handleChange}
+                    placeholder="es. Treviso"
+                  />
+                  <Input
+                    id="tollExitStation"
+                    name="tollExitStation"
+                    label="Casello di Uscita"
+                    value={formData.tollExitStation}
+                    onChange={handleChange}
+                    placeholder="es. Vicenza"
+                  />
+                  <Input
+                    id="tollAmount"
+                    name="tollAmount"
+                    label="Importo Pedaggio (€)"
+                    type="number"
+                    step="0.10"
+                    min="0"
+                    value={formData.tollAmount}
+                    onChange={handleChange}
+                    placeholder="es. 3.50"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
           {reimbursement !== null && (
             <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center">
-                <Calculator className="h-5 w-5 text-primary-500 mr-2" />
-                <div>
-                  <h3 className="text-sm font-medium text-primary-800">Rimborso Stimato</h3>
-                  <p className="text-lg font-semibold text-primary-900">
-                    {reimbursement.toFixed(2)} €
-                    <span className="text-sm font-normal text-primary-700 ml-2">
+              <div className="flex items-start">
+                <Calculator className="h-5 w-5 text-primary-500 mr-3 mt-1" />
+                <div className="flex-grow">
+                  <h3 className="text-sm font-medium text-primary-800 mb-2">Riepilogo Rimborso</h3>
+
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-primary-700">Rimborso Chilometrico:</span>
+                      <span className="text-lg font-semibold text-primary-900">
+                        {reimbursement.toFixed(2)} €
+                      </span>
+                    </div>
+                    <p className="text-xs text-primary-600">
                       ({formData.isRoundTrip ? parseFloat(formData.distance) * 2 : formData.distance} km totali)
-                    </span>
-                  </p>
+                    </p>
+
+                    {tollAmount !== null && (
+                      <>
+                        <div className="border-t border-primary-200 pt-2 flex justify-between items-center">
+                          <span className="text-sm text-primary-700">Pedaggi Autostradali:</span>
+                          <span className="text-lg font-semibold text-primary-900">
+                            {tollAmount.toFixed(2)} €
+                          </span>
+                        </div>
+                        {formData.tollEntryStation && formData.tollExitStation && (
+                          <p className="text-xs text-primary-600">
+                            {formData.tollEntryStation} → {formData.tollExitStation}
+                            {formData.isRoundTrip && ' (A/R)'}
+                          </p>
+                        )}
+                      </>
+                    )}
+
+                    <div className="border-t-2 border-primary-300 pt-2 mt-2 flex justify-between items-center">
+                      <span className="text-sm font-medium text-primary-800">Totale Generale:</span>
+                      <span className="text-xl font-bold text-primary-900">
+                        {(reimbursement + (tollAmount || 0)).toFixed(2)} €
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

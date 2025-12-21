@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Edit, Trash2, Search, PlusCircle, Calendar } from 'lucide-react';
+import { MapPin, Edit, Trash2, Search, PlusCircle, Calendar, Banknote } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Table from '../components/Table';
@@ -117,6 +117,22 @@ const TripsPage: React.FC = () => {
       render: (trip: Trip) => {
         const distance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
         return <span>{distance.toFixed(1)} km</span>;
+      },
+    },
+    {
+      key: 'toll',
+      header: 'Pedaggio',
+      render: (trip: Trip) => {
+        if (trip.hasToll && trip.tollAmount) {
+          const toll = trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+          return (
+            <div className="flex items-center space-x-1">
+              <Banknote size={14} className="text-amber-600" />
+              <span className="text-amber-700 font-medium">{toll.toFixed(2)} €</span>
+            </div>
+          );
+        }
+        return <span className="text-gray-400 text-sm">-</span>;
       },
     },
     {

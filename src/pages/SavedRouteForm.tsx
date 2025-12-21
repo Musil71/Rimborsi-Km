@@ -106,12 +106,33 @@ const SavedRouteForm: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDistanceChange = (distanceId: string, field: 'label' | 'distance', value: string) => {
+  const handleDistanceChange = (distanceId: string, field: 'label' | 'distance' | 'tollEntryStation' | 'tollExitStation' | 'tollAmount', value: string) => {
     setFormData(prev => ({
       ...prev,
-      distances: prev.distances.map(d => 
-        d.id === distanceId 
-          ? { ...d, [field]: field === 'distance' ? parseFloat(value) || 0 : value }
+      distances: prev.distances.map(d =>
+        d.id === distanceId
+          ? {
+              ...d,
+              [field]: (field === 'distance' || field === 'tollAmount')
+                ? parseFloat(value) || 0
+                : value
+            }
+          : d
+      )
+    }));
+  };
+
+  const handleTollCheckboxChange = (distanceId: string, checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      distances: prev.distances.map(d =>
+        d.id === distanceId
+          ? {
+              ...d,
+              tollEntryStation: checked ? (d.tollEntryStation || '') : undefined,
+              tollExitStation: checked ? (d.tollExitStation || '') : undefined,
+              tollAmount: checked ? (d.tollAmount || 0) : undefined
+            }
           : d
       )
     }));
@@ -338,6 +359,72 @@ const SavedRouteForm: React.FC = () => {
                       placeholder="Inserisci la distanza da Google Maps"
                       required
                     />
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="flex items-center space-x-2 mb-3">
+                      <input
+                        type="checkbox"
+                        id={`toll-checkbox-${distance.id}`}
+                        checked={distance.tollEntryStation !== undefined || distance.tollExitStation !== undefined || distance.tollAmount !== undefined}
+                        onChange={(e) => handleTollCheckboxChange(distance.id, e.target.checked)}
+                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      />
+                      <label htmlFor={`toll-checkbox-${distance.id}`} className="text-sm font-medium text-gray-700">
+                        Questo percorso include pedaggi autostradali
+                      </label>
+                    </div>
+
+                    {(distance.tollEntryStation !== undefined || distance.tollExitStation !== undefined || distance.tollAmount !== undefined) && (
+                      <div className="space-y-3">
+                        <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
+                          <div className="flex items-start">
+                            <Info className="h-4 w-4 text-blue-500 mr-2 mt-0.5 flex-shrink-0" />
+                            <div className="flex-grow">
+                              <p className="text-xs text-blue-700">
+                                Puoi definire un pedaggio predefinito per questo percorso. Gli importi possono essere modificati per ogni singolo viaggio.{' '}
+                                <a
+                                  href="https://www.infoviaggiando.it/pedaggi"
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="underline hover:text-blue-800 inline-flex items-center"
+                                >
+                                  Consulta qui gli importi aggiornati
+                                  <ExternalLink size={12} className="ml-1" />
+                                </a>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          <Input
+                            id={`toll-entry-${distance.id}`}
+                            label="Casello di Entrata"
+                            value={distance.tollEntryStation || ''}
+                            onChange={(e) => handleDistanceChange(distance.id, 'tollEntryStation', e.target.value)}
+                            placeholder="es. Treviso"
+                          />
+                          <Input
+                            id={`toll-exit-${distance.id}`}
+                            label="Casello di Uscita"
+                            value={distance.tollExitStation || ''}
+                            onChange={(e) => handleDistanceChange(distance.id, 'tollExitStation', e.target.value)}
+                            placeholder="es. Vicenza"
+                          />
+                          <Input
+                            id={`toll-amount-${distance.id}`}
+                            label="Importo Pedaggio (€)"
+                            type="number"
+                            step="0.10"
+                            min="0"
+                            value={(distance.tollAmount || 0).toString()}
+                            onChange={(e) => handleDistanceChange(distance.id, 'tollAmount', e.target.value)}
+                            placeholder="es. 3.50"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

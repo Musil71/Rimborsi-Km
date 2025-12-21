@@ -88,7 +88,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         purpose: t.purpose || '',
         isRoundTrip: t.is_round_trip || false,
         savedRouteId: t.saved_route_id,
-        selectedDistanceId: t.selected_distance_id
+        selectedDistanceId: t.selected_distance_id,
+        hasToll: t.has_toll || false,
+        tollEntryStation: t.toll_entry_station,
+        tollExitStation: t.toll_exit_station,
+        tollAmount: t.toll_amount ? parseFloat(t.toll_amount) : undefined
       }));
 
       const distancesMap = new Map<string, RouteDistance[]>();
@@ -99,7 +103,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         distancesMap.get(d.route_id)!.push({
           id: d.id,
           label: d.label,
-          distance: parseFloat(d.distance)
+          distance: parseFloat(d.distance),
+          tollEntryStation: d.toll_entry_station,
+          tollExitStation: d.toll_exit_station,
+          tollAmount: d.toll_amount ? parseFloat(d.toll_amount) : undefined
         });
       });
 
@@ -256,7 +263,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         destination: trip.destination,
         distance: trip.distance,
         purpose: trip.purpose,
-        is_round_trip: trip.isRoundTrip
+        is_round_trip: trip.isRoundTrip,
+        has_toll: trip.hasToll || false,
+        toll_entry_station: trip.tollEntryStation,
+        toll_exit_station: trip.tollExitStation,
+        toll_amount: trip.tollAmount
       }])
       .select()
       .single();
@@ -276,7 +287,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         purpose: data.purpose,
         isRoundTrip: data.is_round_trip,
         savedRouteId: data.saved_route_id,
-        selectedDistanceId: data.selected_distance_id
+        selectedDistanceId: data.selected_distance_id,
+        hasToll: data.has_toll || false,
+        tollEntryStation: data.toll_entry_station,
+        tollExitStation: data.toll_exit_station,
+        tollAmount: data.toll_amount ? parseFloat(data.toll_amount) : undefined
       }, ...prev.trips]
     }));
   };
@@ -294,7 +309,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         destination: trip.destination,
         distance: trip.distance,
         purpose: trip.purpose,
-        is_round_trip: trip.isRoundTrip
+        is_round_trip: trip.isRoundTrip,
+        has_toll: trip.hasToll || false,
+        toll_entry_station: trip.tollEntryStation,
+        toll_exit_station: trip.tollExitStation,
+        toll_amount: trip.tollAmount
       })
       .eq('id', trip.id);
 
@@ -341,7 +360,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const distancesData = route.distances.map(d => ({
         route_id: data.id,
         label: d.label,
-        distance: d.distance
+        distance: d.distance,
+        toll_entry_station: d.tollEntryStation,
+        toll_exit_station: d.tollExitStation,
+        toll_amount: d.tollAmount
       }));
 
       const { data: distancesResult, error: distancesError } = await supabase
@@ -354,7 +376,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       newRoute.distances = (distancesResult || []).map(d => ({
         id: d.id,
         label: d.label,
-        distance: parseFloat(d.distance)
+        distance: parseFloat(d.distance),
+        tollEntryStation: d.toll_entry_station,
+        tollExitStation: d.toll_exit_station,
+        tollAmount: d.toll_amount ? parseFloat(d.toll_amount) : undefined
       }));
     }
 
@@ -398,7 +423,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .insert([{
         route_id: routeId,
         label: distance.label,
-        distance: distance.distance
+        distance: distance.distance,
+        toll_entry_station: distance.tollEntryStation,
+        toll_exit_station: distance.tollExitStation,
+        toll_amount: distance.tollAmount
       }])
       .select()
       .single();
@@ -408,7 +436,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     const newDistance: RouteDistance = {
       id: data.id,
       label: data.label,
-      distance: parseFloat(data.distance)
+      distance: parseFloat(data.distance),
+      tollEntryStation: data.toll_entry_station,
+      tollExitStation: data.toll_exit_station,
+      tollAmount: data.toll_amount ? parseFloat(data.toll_amount) : undefined
     };
 
     setState(prev => ({
@@ -426,7 +457,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .from('route_distances')
       .update({
         label: distance.label,
-        distance: distance.distance
+        distance: distance.distance,
+        toll_entry_station: distance.tollEntryStation,
+        toll_exit_station: distance.tollExitStation,
+        toll_amount: distance.tollAmount
       })
       .eq('id', distance.id);
 
@@ -495,6 +529,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     let totalDistance = 0;
     let totalReimbursement = 0;
+    let totalTollFees = 0;
 
     personTrips.forEach(trip => {
       const vehicle = state.vehicles.find(v => v.id === trip.vehicleId);
@@ -502,6 +537,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         const tripDistance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
         totalDistance += tripDistance;
         totalReimbursement += tripDistance * vehicle.reimbursementRate;
+      }
+
+      if (trip.hasToll && trip.tollAmount) {
+        const tollAmount = trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+        totalTollFees += tollAmount;
       }
     });
 
@@ -511,7 +551,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       personId,
       trips: personTrips,
       totalDistance,
-      totalReimbursement
+      totalReimbursement,
+      totalTollFees
     };
   };
 

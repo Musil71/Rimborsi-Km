@@ -25,6 +25,9 @@ export interface RouteDistance {
   id: string;
   label: string; // es. "Strada Normale", "Autostrada", "Percorso Veloce"
   distance: number; // in km
+  tollEntryStation?: string; // Casello di entrata (opzionale)
+  tollExitStation?: string; // Casello di uscita (opzionale)
+  tollAmount?: number; // Importo pedaggio in euro (opzionale)
 }
 
 export interface SavedRoute {
@@ -47,6 +50,10 @@ export interface Trip {
   isRoundTrip: boolean;
   savedRouteId?: string;
   selectedDistanceId?: string; // ID della distanza selezionata dal percorso salvato
+  hasToll?: boolean; // Se questo viaggio include pedaggi
+  tollEntryStation?: string; // Casello di entrata
+  tollExitStation?: string; // Casello di uscita
+  tollAmount?: number; // Importo pedaggio in euro
 }
 
 export interface MonthlyReport {
@@ -56,6 +63,7 @@ export interface MonthlyReport {
   trips: Trip[];
   totalDistance: number;
   totalReimbursement: number;
+  totalTollFees: number; // Totale pedaggi del mese
 }
 
 export interface AppState {

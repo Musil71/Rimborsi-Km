@@ -41,12 +41,16 @@ export const generatePDF = (
   
   // Add summary box
   doc.setFillColor(240, 240, 240);
-  doc.roundedRect(14, 75, 182, 25, 3, 3, 'F');
+  doc.roundedRect(14, 75, 182, 35, 3, 3, 'F');
   doc.setFont(undefined, 'bold');
   doc.text('Riepilogo:', 18, 85);
   doc.setFont(undefined, 'normal');
   doc.text(`Totale Kilometri: ${report.totalDistance.toFixed(1)} km`, 18, 93);
-  doc.text(`Importo Totale: ${report.totalReimbursement.toFixed(2)} €`, 120, 93);
+  doc.text(`Rimborso Chilometrico: ${report.totalReimbursement.toFixed(2)} €`, 18, 101);
+  doc.text(`Pedaggi Autostradali: ${report.totalTollFees.toFixed(2)} €`, 120, 93);
+  doc.setFont(undefined, 'bold');
+  doc.text(`TOTALE GENERALE: ${(report.totalReimbursement + report.totalTollFees).toFixed(2)} €`, 120, 101);
+  doc.setFont(undefined, 'normal');
   
   // Format date for display
   const formatDate = (dateString: string) => {
@@ -57,39 +61,47 @@ export const generatePDF = (
   // Generate trips table
   if (report.trips.length > 0) {
     const tableColumn = [
-      'Data', 
-      'Origine', 
-      'Destinazione', 
-      'Veicolo', 
-      'Km', 
-      'Tariffa', 
-      'Importo'
+      'Data',
+      'Origine',
+      'Destinazione',
+      'Veicolo',
+      'Km',
+      'Rimborso',
+      'Pedaggio',
+      'Totale'
     ];
-    
+
     const tableRows = report.trips.map((trip: Trip) => {
       // Find vehicle for this trip
       const vehicle = (globalThis as any).state?.vehicles.find(
         (v: Vehicle) => v.id === trip.vehicleId
       );
-      
+
       const distance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
       const rate = vehicle ? vehicle.reimbursementRate : 0;
-      const amount = distance * rate;
-      
+      const reimbursement = distance * rate;
+
+      const toll = (trip.hasToll && trip.tollAmount)
+        ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount)
+        : 0;
+
+      const total = reimbursement + toll;
+
       return [
         formatDate(trip.date),
-        trip.origin.length > 15 ? trip.origin.substring(0, 15) + '...' : trip.origin,
-        trip.destination.length > 15 ? trip.destination.substring(0, 15) + '...' : trip.destination,
+        trip.origin.length > 12 ? trip.origin.substring(0, 12) + '...' : trip.origin,
+        trip.destination.length > 12 ? trip.destination.substring(0, 12) + '...' : trip.destination,
         vehicle ? `${vehicle.make} ${vehicle.model}` : 'N/A',
-        `${distance.toFixed(1)} km`,
-        `${rate.toFixed(2)} €/km`,
-        `${amount.toFixed(2)} €`,
+        `${distance.toFixed(1)}`,
+        `${reimbursement.toFixed(2)} €`,
+        toll > 0 ? `${toll.toFixed(2)} €` : '-',
+        `${total.toFixed(2)} €`,
       ];
     });
     
     // @ts-ignore
     doc.autoTable({
-      startY: 110,
+      startY: 120,
       head: [tableColumn],
       body: tableRows,
       theme: 'striped',
@@ -102,9 +114,23 @@ export const generatePDF = (
         fillColor: [240, 240, 240],
       },
       margin: { top: 10 },
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+      },
+      columnStyles: {
+        0: { cellWidth: 20 },
+        1: { cellWidth: 24 },
+        2: { cellWidth: 24 },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 15 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 20 },
+        7: { cellWidth: 22 },
+      },
     });
   } else {
-    doc.text('Nessun viaggio registrato per questo periodo', 14, 110);
+    doc.text('Nessun viaggio registrato per questo periodo', 14, 120);
   }
   
   // Add signature area
