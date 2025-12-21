@@ -151,7 +151,7 @@ const PersonForm: React.FC = () => {
     setVehicleFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handlePersonSubmit = (e: React.FormEvent) => {
+  const handlePersonSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validatePersonForm()) {
@@ -167,16 +167,21 @@ const PersonForm: React.FC = () => {
       homeAddress: personFormData.homeAddress || undefined,
     };
 
-    if (isEditing && person) {
-      updatePerson({
-        id: person.id,
-        ...personData,
-      });
-      showToast('Persona aggiornata con successo', 'success');
-    } else {
-      addPerson(personData);
-      showToast('Persona aggiunta con successo', 'success');
-      navigate('/persone');
+    try {
+      if (isEditing && person) {
+        await updatePerson({
+          id: person.id,
+          ...personData,
+        });
+        showToast('Persona aggiornata con successo', 'success');
+      } else {
+        await addPerson(personData);
+        showToast('Persona aggiunta con successo', 'success');
+        navigate('/persone');
+      }
+    } catch (error) {
+      console.error('Errore durante il salvataggio della persona:', error);
+      showToast('Errore durante il salvataggio della persona', 'error');
     }
   };
 
@@ -204,7 +209,7 @@ const PersonForm: React.FC = () => {
     setVehicleErrors({});
   };
 
-  const handleVehicleSubmit = (e: React.FormEvent) => {
+  const handleVehicleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateVehicleForm()) {
@@ -224,31 +229,41 @@ const PersonForm: React.FC = () => {
       reimbursementRate: parseFloat(vehicleFormData.reimbursementRate),
     };
 
-    if (editingVehicleId) {
-      updateVehicle({
-        id: editingVehicleId,
-        ...vehicleData,
-      });
-      showToast('Veicolo aggiornato con successo', 'success');
-    } else {
-      addVehicle(vehicleData);
-      showToast('Veicolo aggiunto con successo', 'success');
-    }
+    try {
+      if (editingVehicleId) {
+        await updateVehicle({
+          id: editingVehicleId,
+          ...vehicleData,
+        });
+        showToast('Veicolo aggiornato con successo', 'success');
+      } else {
+        await addVehicle(vehicleData);
+        showToast('Veicolo aggiunto con successo', 'success');
+      }
 
-    setIsAddingVehicle(false);
-    setEditingVehicleId(null);
-    setVehicleFormData({
-      make: '',
-      model: '',
-      plate: '',
-      reimbursementRate: '0.35',
-    });
+      setIsAddingVehicle(false);
+      setEditingVehicleId(null);
+      setVehicleFormData({
+        make: '',
+        model: '',
+        plate: '',
+        reimbursementRate: '0.35',
+      });
+    } catch (error) {
+      console.error('Errore durante il salvataggio del veicolo:', error);
+      showToast('Errore durante il salvataggio del veicolo', 'error');
+    }
   };
 
-  const handleDeleteVehicle = (vehicleId: string) => {
+  const handleDeleteVehicle = async (vehicleId: string) => {
     if (window.confirm('Sei sicuro di voler eliminare questo veicolo? Verranno eliminati anche tutti i tragitti associati.')) {
-      deleteVehicle(vehicleId);
-      showToast('Veicolo eliminato con successo', 'success');
+      try {
+        await deleteVehicle(vehicleId);
+        showToast('Veicolo eliminato con successo', 'success');
+      } catch (error) {
+        console.error('Errore durante l\'eliminazione del veicolo:', error);
+        showToast('Errore durante l\'eliminazione del veicolo', 'error');
+      }
     }
   };
 
