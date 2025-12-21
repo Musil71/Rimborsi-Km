@@ -75,7 +75,9 @@ const TripForm: React.FC = () => {
   useEffect(() => {
     if (trip) {
       const savedRoute = trip.savedRouteId ? getSavedRoute(trip.savedRouteId) : null;
-      
+      const person = getPerson(trip.personId);
+      const personHomeAddress = person?.homeAddress || DEFAULT_ORIGIN;
+
       // Update available vehicles first
       if (trip.personId) {
         updateAvailableVehicles(trip.personId);
@@ -98,7 +100,7 @@ const TripForm: React.FC = () => {
         isRoundTrip: trip.isRoundTrip,
         savedRouteId: trip.savedRouteId || '',
         selectedDistanceId: trip.selectedDistanceId || '',
-        useCustomOrigin: trip.origin !== DEFAULT_ORIGIN,
+        useCustomOrigin: trip.origin !== personHomeAddress,
         useCustomDestination: !savedRoute,
       });
     }
@@ -212,18 +214,30 @@ const TripForm: React.FC = () => {
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value, type } = e.target;
-    
+
     if (name === 'personId' && value) {
       updateAvailableVehicles(value);
+
+      const person = getPerson(value);
+      if (person && person.homeAddress && !formData.useCustomOrigin) {
+        setFormData(prev => ({
+          ...prev,
+          personId: value,
+          origin: person.homeAddress || DEFAULT_ORIGIN
+        }));
+        return;
+      }
     }
 
     if (type === 'checkbox') {
       const checked = (e.target as HTMLInputElement).checked;
       if (name === 'useCustomOrigin' && !checked) {
-        setFormData(prev => ({ 
-          ...prev, 
+        const person = formData.personId ? getPerson(formData.personId) : null;
+        const defaultOrigin = person?.homeAddress || DEFAULT_ORIGIN;
+        setFormData(prev => ({
+          ...prev,
           [name]: checked,
-          origin: DEFAULT_ORIGIN
+          origin: defaultOrigin
         }));
       } else if (name === 'useCustomDestination') {
         setFormData(prev => ({
@@ -445,7 +459,7 @@ const TripForm: React.FC = () => {
                 onChange={handleChange}
               />
               <label htmlFor="useCustomOrigin" className="ml-2 block text-sm text-blue-700">
-                Usa un indirizzo di partenza diverso dalla sede ITFV
+                Usa un indirizzo di partenza personalizzato
               </label>
             </div>
             {formData.useCustomOrigin ? (
@@ -459,7 +473,11 @@ const TripForm: React.FC = () => {
                 required
               />
             ) : (
-              <p className="text-sm text-blue-600">{DEFAULT_ORIGIN}</p>
+              <p className="text-sm text-blue-600">
+                {formData.personId
+                  ? getPerson(formData.personId)?.homeAddress || DEFAULT_ORIGIN
+                  : DEFAULT_ORIGIN}
+              </p>
             )}
           </div>
 

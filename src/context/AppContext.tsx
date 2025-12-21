@@ -64,7 +64,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         surname: p.surname || '',
         role: p.role,
         email: p.email,
-        phone: p.phone
+        phone: p.phone,
+        homeAddress: p.home_address
       }));
 
       const vehicles: Vehicle[] = (vehiclesRes.data || []).map(v => ({
@@ -126,7 +127,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         surname: person.surname,
         role: person.role,
         email: person.email,
-        phone: person.phone
+        phone: person.phone,
+        home_address: person.homeAddress
       }])
       .select()
       .single();
@@ -141,7 +143,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         surname: data.surname,
         role: data.role,
         email: data.email,
-        phone: data.phone
+        phone: data.phone,
+        homeAddress: data.home_address
       }, ...prev.people]
     }));
   };
@@ -154,7 +157,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         surname: person.surname,
         role: person.role,
         email: person.email,
-        phone: person.phone
+        phone: person.phone,
+        home_address: person.homeAddress
       })
       .eq('id', person.id);
 

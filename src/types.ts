@@ -9,6 +9,7 @@ export interface Person {
   role: Role;
   email?: string;
   phone?: string;
+  homeAddress?: string;
 }
 
 export interface Vehicle {

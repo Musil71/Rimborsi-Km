@@ -16,6 +16,7 @@ interface PersonFormData {
   role: Role;
   email: string;
   phone: string;
+  homeAddress: string;
 }
 
 interface VehicleFormData {
@@ -60,6 +61,7 @@ const PersonForm: React.FC = () => {
     role: 'docente',
     email: '',
     phone: '',
+    homeAddress: '',
   });
 
   const [vehicleFormData, setVehicleFormData] = useState<VehicleFormData>({
@@ -82,6 +84,7 @@ const PersonForm: React.FC = () => {
         role: person.role,
         email: person.email || '',
         phone: person.phone || '',
+        homeAddress: person.homeAddress || '',
       });
     }
   }, [person]);
@@ -161,6 +164,7 @@ const PersonForm: React.FC = () => {
       role: personFormData.role as Role,
       email: personFormData.email || undefined,
       phone: personFormData.phone || undefined,
+      homeAddress: personFormData.homeAddress || undefined,
     };
 
     if (isEditing && person) {
@@ -329,6 +333,15 @@ const PersonForm: React.FC = () => {
               onChange={handlePersonChange}
             />
           </div>
+
+          <Input
+            id="homeAddress"
+            name="homeAddress"
+            label="Indirizzo di Casa"
+            value={personFormData.homeAddress}
+            onChange={handlePersonChange}
+            placeholder="Via, Città"
+          />
 
           <div className="flex justify-end">
             <Button
