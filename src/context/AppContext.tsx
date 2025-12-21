@@ -1,142 +1,26 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { v4 as uuidv4 } from 'uuid';
 import { AppState, Person, Vehicle, Trip, SavedRoute, MonthlyReport, RouteDistance } from '../types';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
-import { useDebounce } from '../hooks/useDebounce';
+import { supabase } from '../lib/supabase';
 
-// Migration function to convert old SavedRoute format to new format
-const migrateSavedRoutes = (routes: any[]): SavedRoute[] => {
-  return routes.map(route => {
-    // If route already has distances array, return as is
-    if (route.distances && Array.isArray(route.distances)) {
-      return route as SavedRoute;
-    }
-    
-    // If route has old distance property, convert it
-    if (typeof route.distance === 'number') {
-      return {
-        ...route,
-        distances: [
-          {
-            id: uuidv4(),
-            label: 'Percorso Standard',
-            distance: route.distance
-          }
-        ]
-      } as SavedRoute;
-    }
-    
-    // Fallback for malformed data
-    return {
-      ...route,
-      distances: []
-    } as SavedRoute;
-  });
-};
-
-// Default state with sample data
-const defaultState: AppState = {
-  people: [
-    {
-      id: '1',
-      name: 'Marco',
-      surname: 'Rossi',
-      role: 'docente',
-      email: 'marco.rossi@itfv.it',
-    },
-    {
-      id: '2',
-      name: 'Giulia',
-      surname: 'Bianchi',
-      role: 'dipendente',
-      email: 'giulia.bianchi@itfv.it',
-    },
-    {
-      id: '3',
-      name: 'Alessandro',
-      surname: 'Verdi',
-      role: 'amministratore',
-      email: 'alessandro.verdi@itfv.it',
-    }
-  ],
-  vehicles: [
-    {
-      id: '1',
-      personId: '1',
-      make: 'Fiat',
-      model: '500',
-      plate: 'AB123CD',
-      reimbursementRate: 0.35,
-    },
-    {
-      id: '2',
-      personId: '2',
-      make: 'Renault',
-      model: 'Clio',
-      plate: 'EF456GH',
-      reimbursementRate: 0.38,
-    }
-  ],
-  savedRoutes: [
-    {
-      id: '1',
-      name: 'Sede Treviso - Sede Vicenza',
-      origin: 'Via della Quercia 2/B, Treviso',
-      destination: 'Via Pola 30, Torre di Quartesolo, Vicenza',
-      distances: [
-        {
-          id: uuidv4(),
-          label: 'Strada Normale',
-          distance: 65.2
-        },
-        {
-          id: uuidv4(),
-          label: 'Autostrada',
-          distance: 58.7
-        }
-      ]
-    },
-    {
-      id: '2',
-      name: 'Sede Treviso - Sede Marcon',
-      origin: 'Via della Quercia 2/B, Treviso',
-      destination: 'Viale della Stazione 3, Marcon',
-      distances: [
-        {
-          id: uuidv4(),
-          label: 'Strada Normale',
-          distance: 25.7
-        },
-        {
-          id: uuidv4(),
-          label: 'Tangenziale',
-          distance: 23.4
-        }
-      ]
-    }
-  ],
-  trips: []
-};
-
-// Create the context
 interface AppContextType {
   state: AppState;
-  addPerson: (person: Omit<Person, 'id'>) => void;
-  updatePerson: (person: Person) => void;
-  deletePerson: (id: string) => void;
-  addVehicle: (vehicle: Omit<Vehicle, 'id'>) => void;
-  updateVehicle: (vehicle: Vehicle) => void;
-  deleteVehicle: (id: string) => void;
-  addTrip: (trip: Omit<Trip, 'id'>) => void;
-  updateTrip: (trip: Trip) => void;
-  deleteTrip: (id: string) => void;
-  addSavedRoute: (route: Omit<SavedRoute, 'id'>) => void;
-  updateSavedRoute: (route: SavedRoute) => void;
-  deleteSavedRoute: (id: string) => void;
-  addRouteDistance: (routeId: string, distance: Omit<RouteDistance, 'id'>) => void;
-  updateRouteDistance: (routeId: string, distance: RouteDistance) => void;
-  deleteRouteDistance: (routeId: string, distanceId: string) => void;
+  addPerson: (person: Omit<Person, 'id'>) => Promise<void>;
+  updatePerson: (person: Person) => Promise<void>;
+  deletePerson: (id: string) => Promise<void>;
+  addVehicle: (vehicle: Omit<Vehicle, 'id'>) => Promise<void>;
+  updateVehicle: (vehicle: Vehicle) => Promise<void>;
+  deleteVehicle: (id: string) => Promise<void>;
+  addTrip: (trip: Omit<Trip, 'id'>) => Promise<void>;
+  updateTrip: (trip: Trip) => Promise<void>;
+  deleteTrip: (id: string) => Promise<void>;
+  addSavedRoute: (route: Omit<SavedRoute, 'id'>) => Promise<void>;
+  updateSavedRoute: (route: SavedRoute) => Promise<void>;
+  deleteSavedRoute: (id: string) => Promise<void>;
+  addRouteDistance: (routeId: string, distance: Omit<RouteDistance, 'id'>) => Promise<void>;
+  updateRouteDistance: (routeId: string, distance: RouteDistance) => Promise<void>;
+  deleteRouteDistance: (routeId: string, distanceId: string) => Promise<void>;
   generateMonthlyReport: (personId: string, month: number, year: number) => MonthlyReport | null;
   getPerson: (id: string) => Person | undefined;
   getVehicle: (id: string) => Vehicle | undefined;
@@ -144,55 +28,148 @@ interface AppContextType {
   getSavedRoute: (id: string) => SavedRoute | undefined;
   getRouteDistance: (routeId: string, distanceId: string) => RouteDistance | undefined;
   formatDate: (dateString: string) => string;
+  loading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-// Provider component
 export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [state, setState] = useState<AppState>(() => {
-    const savedState = localStorage.getItem('itfvAppState');
-    if (savedState) {
-      try {
-        const parsedState = JSON.parse(savedState);
-        // Migrate saved routes if needed
-        if (parsedState.savedRoutes) {
-          parsedState.savedRoutes = migrateSavedRoutes(parsedState.savedRoutes);
-        }
-        return parsedState;
-      } catch (error) {
-        console.error('Error parsing saved state:', error);
-        return defaultState;
-      }
-    }
-    return defaultState;
+  const [state, setState] = useState<AppState>({
+    people: [],
+    vehicles: [],
+    trips: [],
+    savedRoutes: []
   });
+  const [loading, setLoading] = useState(true);
 
-  // Debounce the state to reduce localStorage writes
-  // Wait 500ms after the last state change before saving
-  const debouncedState = useDebounce(state, 500);
-
-  // Save to localStorage only when debouncedState changes
   useEffect(() => {
-    localStorage.setItem('itfvAppState', JSON.stringify(debouncedState));
-  }, [debouncedState]);
+    loadData();
+  }, []);
 
-  const addPerson = (person: Omit<Person, 'id'>) => {
-    const newPerson = { ...person, id: uuidv4() };
+  const loadData = async () => {
+    try {
+      setLoading(true);
+
+      const [peopleRes, vehiclesRes, tripsRes, routesRes, distancesRes] = await Promise.all([
+        supabase.from('people').select('*').order('created_at', { ascending: false }),
+        supabase.from('vehicles').select('*').order('created_at', { ascending: false }),
+        supabase.from('trips').select('*').order('date', { ascending: false }),
+        supabase.from('saved_routes').select('*').order('created_at', { ascending: false }),
+        supabase.from('route_distances').select('*')
+      ]);
+
+      const people: Person[] = (peopleRes.data || []).map(p => ({
+        id: p.id,
+        name: p.name,
+        surname: p.surname || '',
+        role: p.role,
+        email: p.email,
+        phone: p.phone
+      }));
+
+      const vehicles: Vehicle[] = (vehiclesRes.data || []).map(v => ({
+        id: v.id,
+        personId: v.person_id,
+        make: v.make || '',
+        model: v.model,
+        plate: v.plate || v.license_plate,
+        reimbursementRate: parseFloat(v.reimbursement_rate)
+      }));
+
+      const trips: Trip[] = (tripsRes.data || []).map(t => ({
+        id: t.id,
+        date: t.date,
+        personId: t.person_id,
+        vehicleId: t.vehicle_id,
+        origin: t.origin,
+        destination: t.destination,
+        distance: parseFloat(t.distance),
+        purpose: t.purpose || '',
+        isRoundTrip: t.is_round_trip || false,
+        savedRouteId: t.saved_route_id,
+        selectedDistanceId: t.selected_distance_id
+      }));
+
+      const distancesMap = new Map<string, RouteDistance[]>();
+      (distancesRes.data || []).forEach(d => {
+        if (!distancesMap.has(d.route_id)) {
+          distancesMap.set(d.route_id, []);
+        }
+        distancesMap.get(d.route_id)!.push({
+          id: d.id,
+          label: d.label,
+          distance: parseFloat(d.distance)
+        });
+      });
+
+      const savedRoutes: SavedRoute[] = (routesRes.data || []).map(r => ({
+        id: r.id,
+        name: r.name,
+        origin: r.origin,
+        destination: r.destination,
+        distances: distancesMap.get(r.id) || []
+      }));
+
+      setState({ people, vehicles, trips, savedRoutes });
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addPerson = async (person: Omit<Person, 'id'>) => {
+    const { data, error } = await supabase
+      .from('people')
+      .insert([{
+        name: person.name,
+        surname: person.surname,
+        role: person.role,
+        email: person.email,
+        phone: person.phone
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
-      people: [...prev.people, newPerson]
+      people: [{
+        id: data.id,
+        name: data.name,
+        surname: data.surname,
+        role: data.role,
+        email: data.email,
+        phone: data.phone
+      }, ...prev.people]
     }));
   };
 
-  const updatePerson = (person: Person) => {
+  const updatePerson = async (person: Person) => {
+    const { error } = await supabase
+      .from('people')
+      .update({
+        name: person.name,
+        surname: person.surname,
+        role: person.role,
+        email: person.email,
+        phone: person.phone
+      })
+      .eq('id', person.id);
+
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
       people: prev.people.map(p => p.id === person.id ? person : p)
     }));
   };
 
-  const deletePerson = (id: string) => {
+  const deletePerson = async (id: string) => {
+    const { error } = await supabase.from('people').delete().eq('id', id);
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
       people: prev.people.filter(p => p.id !== id),
@@ -201,22 +178,60 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
-  const addVehicle = (vehicle: Omit<Vehicle, 'id'>) => {
-    const newVehicle = { ...vehicle, id: uuidv4() };
+  const addVehicle = async (vehicle: Omit<Vehicle, 'id'>) => {
+    const { data, error } = await supabase
+      .from('vehicles')
+      .insert([{
+        person_id: vehicle.personId,
+        make: vehicle.make,
+        model: vehicle.model,
+        plate: vehicle.plate,
+        license_plate: vehicle.plate,
+        reimbursement_rate: vehicle.reimbursementRate
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
-      vehicles: [...prev.vehicles, newVehicle]
+      vehicles: [{
+        id: data.id,
+        personId: data.person_id,
+        make: data.make,
+        model: data.model,
+        plate: data.plate,
+        reimbursementRate: parseFloat(data.reimbursement_rate)
+      }, ...prev.vehicles]
     }));
   };
 
-  const updateVehicle = (vehicle: Vehicle) => {
+  const updateVehicle = async (vehicle: Vehicle) => {
+    const { error } = await supabase
+      .from('vehicles')
+      .update({
+        person_id: vehicle.personId,
+        make: vehicle.make,
+        model: vehicle.model,
+        plate: vehicle.plate,
+        license_plate: vehicle.plate,
+        reimbursement_rate: vehicle.reimbursementRate
+      })
+      .eq('id', vehicle.id);
+
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
       vehicles: prev.vehicles.map(v => v.id === vehicle.id ? vehicle : v)
     }));
   };
 
-  const deleteVehicle = (id: string) => {
+  const deleteVehicle = async (id: string) => {
+    const { error } = await supabase.from('vehicles').delete().eq('id', id);
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
       vehicles: prev.vehicles.filter(v => v.id !== id),
@@ -224,69 +239,201 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
-  const addTrip = (trip: Omit<Trip, 'id'>) => {
-    const newTrip = { ...trip, id: uuidv4() };
+  const addTrip = async (trip: Omit<Trip, 'id'>) => {
+    const { data, error } = await supabase
+      .from('trips')
+      .insert([{
+        person_id: trip.personId,
+        vehicle_id: trip.vehicleId,
+        saved_route_id: trip.savedRouteId,
+        selected_distance_id: trip.selectedDistanceId,
+        date: trip.date,
+        origin: trip.origin,
+        destination: trip.destination,
+        distance: trip.distance,
+        purpose: trip.purpose,
+        is_round_trip: trip.isRoundTrip
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
-      trips: [...prev.trips, newTrip]
+      trips: [{
+        id: data.id,
+        date: data.date,
+        personId: data.person_id,
+        vehicleId: data.vehicle_id,
+        origin: data.origin,
+        destination: data.destination,
+        distance: parseFloat(data.distance),
+        purpose: data.purpose,
+        isRoundTrip: data.is_round_trip,
+        savedRouteId: data.saved_route_id,
+        selectedDistanceId: data.selected_distance_id
+      }, ...prev.trips]
     }));
   };
 
-  const updateTrip = (trip: Trip) => {
+  const updateTrip = async (trip: Trip) => {
+    const { error } = await supabase
+      .from('trips')
+      .update({
+        person_id: trip.personId,
+        vehicle_id: trip.vehicleId,
+        saved_route_id: trip.savedRouteId,
+        selected_distance_id: trip.selectedDistanceId,
+        date: trip.date,
+        origin: trip.origin,
+        destination: trip.destination,
+        distance: trip.distance,
+        purpose: trip.purpose,
+        is_round_trip: trip.isRoundTrip
+      })
+      .eq('id', trip.id);
+
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
       trips: prev.trips.map(t => t.id === trip.id ? trip : t)
     }));
   };
 
-  const deleteTrip = (id: string) => {
+  const deleteTrip = async (id: string) => {
+    const { error } = await supabase.from('trips').delete().eq('id', id);
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
       trips: prev.trips.filter(t => t.id !== id)
     }));
   };
 
-  const addSavedRoute = (route: Omit<SavedRoute, 'id'>) => {
-    const newRoute = { ...route, id: uuidv4() };
+  const addSavedRoute = async (route: Omit<SavedRoute, 'id'>) => {
+    const { data, error } = await supabase
+      .from('saved_routes')
+      .insert([{
+        name: route.name,
+        origin: route.origin,
+        destination: route.destination
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const newRoute: SavedRoute = {
+      id: data.id,
+      name: data.name,
+      origin: data.origin,
+      destination: data.destination,
+      distances: []
+    };
+
+    if (route.distances && route.distances.length > 0) {
+      const distancesData = route.distances.map(d => ({
+        route_id: data.id,
+        label: d.label,
+        distance: d.distance
+      }));
+
+      const { data: distancesResult, error: distancesError } = await supabase
+        .from('route_distances')
+        .insert(distancesData)
+        .select();
+
+      if (distancesError) throw distancesError;
+
+      newRoute.distances = (distancesResult || []).map(d => ({
+        id: d.id,
+        label: d.label,
+        distance: parseFloat(d.distance)
+      }));
+    }
+
     setState(prev => ({
       ...prev,
-      savedRoutes: [...prev.savedRoutes, newRoute]
+      savedRoutes: [newRoute, ...prev.savedRoutes]
     }));
   };
 
-  const updateSavedRoute = (route: SavedRoute) => {
+  const updateSavedRoute = async (route: SavedRoute) => {
+    const { error } = await supabase
+      .from('saved_routes')
+      .update({
+        name: route.name,
+        origin: route.origin,
+        destination: route.destination
+      })
+      .eq('id', route.id);
+
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
       savedRoutes: prev.savedRoutes.map(r => r.id === route.id ? route : r)
     }));
   };
 
-  const deleteSavedRoute = (id: string) => {
+  const deleteSavedRoute = async (id: string) => {
+    const { error } = await supabase.from('saved_routes').delete().eq('id', id);
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
       savedRoutes: prev.savedRoutes.filter(r => r.id !== id)
     }));
   };
 
-  const addRouteDistance = (routeId: string, distance: Omit<RouteDistance, 'id'>) => {
-    const newDistance = { ...distance, id: uuidv4() };
+  const addRouteDistance = async (routeId: string, distance: Omit<RouteDistance, 'id'>) => {
+    const { data, error } = await supabase
+      .from('route_distances')
+      .insert([{
+        route_id: routeId,
+        label: distance.label,
+        distance: distance.distance
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    const newDistance: RouteDistance = {
+      id: data.id,
+      label: data.label,
+      distance: parseFloat(data.distance)
+    };
+
     setState(prev => ({
       ...prev,
-      savedRoutes: prev.savedRoutes.map(route => 
-        route.id === routeId 
+      savedRoutes: prev.savedRoutes.map(route =>
+        route.id === routeId
           ? { ...route, distances: [...route.distances, newDistance] }
           : route
       )
     }));
   };
 
-  const updateRouteDistance = (routeId: string, distance: RouteDistance) => {
+  const updateRouteDistance = async (routeId: string, distance: RouteDistance) => {
+    const { error } = await supabase
+      .from('route_distances')
+      .update({
+        label: distance.label,
+        distance: distance.distance
+      })
+      .eq('id', distance.id);
+
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
-      savedRoutes: prev.savedRoutes.map(route => 
-        route.id === routeId 
-          ? { 
-              ...route, 
+      savedRoutes: prev.savedRoutes.map(route =>
+        route.id === routeId
+          ? {
+              ...route,
               distances: route.distances.map(d => d.id === distance.id ? distance : d)
             }
           : route
@@ -294,11 +441,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
-  const deleteRouteDistance = (routeId: string, distanceId: string) => {
+  const deleteRouteDistance = async (routeId: string, distanceId: string) => {
+    const { error } = await supabase.from('route_distances').delete().eq('id', distanceId);
+    if (error) throw error;
+
     setState(prev => ({
       ...prev,
-      savedRoutes: prev.savedRoutes.map(route => 
-        route.id === routeId 
+      savedRoutes: prev.savedRoutes.map(route =>
+        route.id === routeId
           ? { ...route, distances: route.distances.filter(d => d.id !== distanceId) }
           : route
       )
@@ -306,12 +456,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const getPerson = (id: string) => state.people.find(p => p.id === id);
-  
+
   const getVehicle = (id: string) => state.vehicles.find(v => v.id === id);
-  
-  const getVehiclesForPerson = (personId: string) => 
+
+  const getVehiclesForPerson = (personId: string) =>
     state.vehicles.filter(v => v.personId === personId);
-  
+
   const getSavedRoute = (id: string) => state.savedRoutes.find(r => r.id === id);
 
   const getRouteDistance = (routeId: string, distanceId: string) => {
@@ -332,8 +482,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const personTrips = state.trips.filter(trip => {
       const tripDate = new Date(trip.date);
-      return trip.personId === personId && 
-             tripDate >= startDate && 
+      return trip.personId === personId &&
+             tripDate >= startDate &&
              tripDate <= endDate;
     });
 
@@ -384,13 +534,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     getVehiclesForPerson,
     getSavedRoute,
     getRouteDistance,
-    formatDate
+    formatDate,
+    loading
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
-// Custom hook for using the context
 export const useAppContext = (): AppContextType => {
   const context = useContext(AppContext);
   if (context === undefined) {
