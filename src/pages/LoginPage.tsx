@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { LogIn } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -9,15 +9,22 @@ import { useToast } from '../context/ToastContext';
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { signIn } = useAuth();
+  const { signIn, user } = useAuth();
   const { showToast } = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const loginSuccessful = useRef(false);
 
   const from = (location.state as any)?.from?.pathname || '/';
+
+  useEffect(() => {
+    if (loginSuccessful.current && user) {
+      navigate(from, { replace: true });
+    }
+  }, [user, from, navigate]);
 
   const validate = () => {
     const newErrors: { email?: string; password?: string } = {};
@@ -54,13 +61,13 @@ const LoginPage: React.FC = () => {
         } else {
           showToast(error.message, 'error');
         }
+        setLoading(false);
       } else {
         showToast('Accesso effettuato con successo', 'success');
-        navigate(from, { replace: true });
+        loginSuccessful.current = true;
       }
     } catch (error) {
       showToast('Errore durante l\'accesso', 'error');
-    } finally {
       setLoading(false);
     }
   };
