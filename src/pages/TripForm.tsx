@@ -7,7 +7,7 @@ import Input from '../components/Input';
 import Select from '../components/Select';
 import { useAppContext } from '../context/AppContext';
 import { calculateDistance } from '../utils/distanceCalculator';
-import { Trip } from '../types';
+import { Trip, Role } from '../types';
 
 const DEFAULT_ORIGIN = 'Via della Quercia 2/B, 31100 Treviso';
 
@@ -15,6 +15,7 @@ interface FormData {
   date: string;
   personId: string;
   vehicleId: string;
+  tripRole: Role;
   origin: string;
   destination: string;
   distance: string;
@@ -34,6 +35,7 @@ interface FormErrors {
   date?: string;
   personId?: string;
   vehicleId?: string;
+  tripRole?: string;
   origin?: string;
   destination?: string;
   distance?: string;
@@ -60,6 +62,7 @@ const TripForm: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     personId: '',
     vehicleId: '',
+    tripRole: 'docente',
     origin: DEFAULT_ORIGIN,
     destination: '',
     distance: '',
@@ -77,6 +80,7 @@ const TripForm: React.FC = () => {
 
   const [errors, setErrors] = useState<FormErrors>({});
   const [availableVehicles, setAvailableVehicles] = useState<{ value: string; label: string; }[]>([]);
+  const [availableRoles, setAvailableRoles] = useState<{ value: Role; label: string; }[]>([]);
   const [reimbursement, setReimbursement] = useState<number | null>(null);
   const [tollAmount, setTollAmount] = useState<number | null>(null);
   const [availableDistances, setAvailableDistances] = useState<{ value: string; label: string; }[]>([]);
@@ -87,9 +91,10 @@ const TripForm: React.FC = () => {
       const person = getPerson(trip.personId);
       const personHomeAddress = person?.homeAddress || DEFAULT_ORIGIN;
 
-      // Update available vehicles first
+      // Update available vehicles and roles first
       if (trip.personId) {
         updateAvailableVehicles(trip.personId);
+        updateAvailableRoles(trip.personId);
       }
 
       // Update available distances if there's a saved route
@@ -102,6 +107,7 @@ const TripForm: React.FC = () => {
         date: new Date(trip.date).toISOString().split('T')[0],
         personId: trip.personId,
         vehicleId: trip.vehicleId,
+        tripRole: trip.tripRole || 'docente',
         origin: trip.origin,
         destination: trip.destination,
         distance: trip.distance.toString(),
@@ -190,6 +196,26 @@ const TripForm: React.FC = () => {
     );
   };
 
+  const updateAvailableRoles = (personId: string) => {
+    const person = getPerson(personId);
+    if (!person) {
+      setAvailableRoles([]);
+      return;
+    }
+
+    const roles: { value: Role; label: string; }[] = [];
+    if (person.isDocente) roles.push({ value: 'docente', label: 'Docente' });
+    if (person.isAmministratore) roles.push({ value: 'amministratore', label: 'Amministratore' });
+    if (person.isDipendente) roles.push({ value: 'dipendente', label: 'Dipendente' });
+
+    setAvailableRoles(roles);
+
+    // Auto-select first available role if current role is not available
+    if (roles.length > 0 && !roles.some(r => r.value === formData.tripRole)) {
+      setFormData(prev => ({ ...prev, tripRole: roles[0].value }));
+    }
+  };
+
   const updateAvailableDistances = (routeId: string) => {
     const route = getSavedRoute(routeId);
     if (route) {
@@ -217,6 +243,10 @@ const TripForm: React.FC = () => {
 
     if (!formData.vehicleId) {
       newErrors.vehicleId = 'Il veicolo è obbligatorio';
+    }
+
+    if (!formData.tripRole) {
+      newErrors.tripRole = 'Il ruolo è obbligatorio';
     }
 
     if (!formData.origin.trim()) {
@@ -247,6 +277,7 @@ const TripForm: React.FC = () => {
 
     if (name === 'personId' && value) {
       updateAvailableVehicles(value);
+      updateAvailableRoles(value);
 
       const person = getPerson(value);
       if (person && person.homeAddress && !formData.useCustomOrigin) {
@@ -365,6 +396,7 @@ const TripForm: React.FC = () => {
       date: formData.date,
       personId: formData.personId,
       vehicleId: formData.vehicleId,
+      tripRole: formData.tripRole,
       origin: formData.origin,
       destination: formData.destination,
       distance: parseFloat(formData.distance),
@@ -426,16 +458,41 @@ const TripForm: React.FC = () => {
               id="personId"
               name="personId"
               label="Persona"
-              options={state.people.map(p => ({ 
-                value: p.id, 
-                label: `${p.name} ${p.surname} (${p.role})` 
-              }))}
+              options={state.people.map(p => {
+                const roles = [];
+                if (p.isDocente) roles.push('D');
+                if (p.isAmministratore) roles.push('A');
+                if (p.isDipendente) roles.push('Dip');
+                return {
+                  value: p.id,
+                  label: `${p.name} ${p.surname} (${roles.join(', ')})`
+                };
+              })}
               value={formData.personId}
               onChange={handleChange}
               error={errors.personId}
               required
             />
           </div>
+
+          {/* Role selection */}
+          {formData.personId && availableRoles.length > 0 && (
+            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+              <Select
+                id="tripRole"
+                name="tripRole"
+                label="In qualità di"
+                options={availableRoles}
+                value={formData.tripRole}
+                onChange={handleChange}
+                error={errors.tripRole}
+                required
+              />
+              <p className="text-xs text-blue-600 mt-1">
+                Seleziona il ruolo in cui {state.people.find(p => p.id === formData.personId)?.name} ha svolto questo viaggio
+              </p>
+            </div>
+          )}
 
           {/* Vehicle selection with automatic selection */}
           <div className="space-y-2">

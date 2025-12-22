@@ -84,6 +84,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         date: t.date,
         personId: t.person_id,
         vehicleId: t.vehicle_id,
+        tripRole: t.trip_role,
         origin: t.origin,
         destination: t.destination,
         distance: parseFloat(t.distance),
@@ -264,6 +265,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .insert([{
         person_id: trip.personId,
         vehicle_id: trip.vehicleId,
+        trip_role: trip.tripRole,
         saved_route_id: trip.savedRouteId,
         selected_distance_id: trip.selectedDistanceId,
         date: trip.date,
@@ -289,6 +291,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         date: data.date,
         personId: data.person_id,
         vehicleId: data.vehicle_id,
+        tripRole: data.trip_role,
         origin: data.origin,
         destination: data.destination,
         distance: parseFloat(data.distance),
@@ -305,11 +308,12 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateTrip = async (trip: Trip) => {
-    const { error } = await supabase
+    const { error} = await supabase
       .from('trips')
       .update({
         person_id: trip.personId,
         vehicle_id: trip.vehicleId,
+        trip_role: trip.tripRole,
         saved_route_id: trip.savedRouteId,
         selected_distance_id: trip.selectedDistanceId,
         date: trip.date,

@@ -18,6 +18,7 @@ const ReportsPage: React.FC = () => {
   const [filterDocenti, setFilterDocenti] = useState(true);
   const [filterAmministratori, setFilterAmministratori] = useState(true);
   const [filterDipendenti, setFilterDipendenti] = useState(true);
+  const [selectedTripRole, setSelectedTripRole] = useState<string>('all');
 
   // Generate month options
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
@@ -44,13 +45,45 @@ const ReportsPage: React.FC = () => {
 
   const handleGenerateReport = () => {
     if (!selectedPerson) return;
-    
-    const reportData = generateMonthlyReport(
+
+    let reportData = generateMonthlyReport(
       selectedPerson,
       parseInt(selectedMonth),
       parseInt(selectedYear)
     );
-    
+
+    // Filter trips by selected role if not 'all'
+    if (reportData && selectedTripRole !== 'all') {
+      const filteredTrips = reportData.trips.filter(trip => trip.tripRole === selectedTripRole);
+
+      // Recalculate totals for filtered trips
+      let totalDistance = 0;
+      let totalReimbursement = 0;
+      let totalTollFees = 0;
+
+      filteredTrips.forEach(trip => {
+        const vehicle = getVehicle(trip.vehicleId);
+        if (vehicle) {
+          const tripDistance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+          totalDistance += tripDistance;
+          totalReimbursement += tripDistance * vehicle.reimbursementRate;
+        }
+
+        if (trip.hasToll && trip.tollAmount) {
+          const tollAmount = trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+          totalTollFees += tollAmount;
+        }
+      });
+
+      reportData = {
+        ...reportData,
+        trips: filteredTrips,
+        totalDistance,
+        totalReimbursement,
+        totalTollFees
+      };
+    }
+
     setReport(reportData);
   };
 
@@ -178,7 +211,7 @@ const ReportsPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               id="personId"
               label="Seleziona Persona"
@@ -196,6 +229,21 @@ const ReportsPage: React.FC = () => {
               onChange={(e) => setSelectedPerson(e.target.value)}
             />
 
+            <Select
+              id="tripRole"
+              label="Filtra per Ruolo Viaggio"
+              options={[
+                { value: 'all', label: 'Tutti i ruoli' },
+                { value: 'docente', label: 'Solo Docente' },
+                { value: 'amministratore', label: 'Solo Amministratore' },
+                { value: 'dipendente', label: 'Solo Dipendente' }
+              ]}
+              value={selectedTripRole}
+              onChange={(e) => setSelectedTripRole(e.target.value)}
+            />
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Select
               id="month"
               label="Mese"
