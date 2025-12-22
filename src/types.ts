@@ -6,7 +6,9 @@ export interface Person {
   id: string;
   name: string;
   surname: string;
-  role: Role;
+  isDocente: boolean;
+  isAmministratore: boolean;
+  isDipendente: boolean;
   email?: string;
   phone?: string;
   homeAddress?: string;
@@ -48,6 +50,7 @@ export interface Trip {
   distance: number; // in km
   purpose: string;
   isRoundTrip: boolean;
+  tripRole?: Role; // Il ruolo in cui è stato effettuato il viaggio
   savedRouteId?: string;
   selectedDistanceId?: string; // ID della distanza selezionata dal percorso salvato
   hasToll?: boolean; // Se questo viaggio include pedaggi
@@ -71,4 +74,16 @@ export interface AppState {
   vehicles: Vehicle[];
   trips: Trip[];
   savedRoutes: SavedRoute[];
+}
+
+export interface UserProfile {
+  id: string;
+  personId: string | null;
+  isAdmin: boolean;
+  email: string;
+}
+
+export interface AuthState {
+  user: UserProfile | null;
+  loading: boolean;
 }
