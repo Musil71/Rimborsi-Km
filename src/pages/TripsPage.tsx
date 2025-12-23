@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MapPin, Edit, Trash2, Search, PlusCircle, Calendar, Banknote } from 'lucide-react';
+import { MapPin, Edit, Trash2, Search, PlusCircle, Calendar, Banknote, Copy } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Table from '../components/Table';
@@ -19,6 +19,10 @@ const TripsPage: React.FC = () => {
     if (window.confirm('Sei sicuro di voler eliminare questo tragitto?')) {
       deleteTrip(id);
     }
+  };
+
+  const handleDuplicate = (trip: Trip) => {
+    navigate('/tragitti/nuovo', { state: { duplicateTrip: trip } });
   };
 
   const filteredTrips = state.trips.filter((trip) => {
@@ -151,6 +155,17 @@ const TripsPage: React.FC = () => {
             }}
           >
             Modifica
+          </Button>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={<Copy size={16} />}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDuplicate(trip);
+            }}
+          >
+            Duplica
           </Button>
           <Button
             variant="danger"

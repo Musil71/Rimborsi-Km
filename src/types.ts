@@ -69,11 +69,23 @@ export interface MonthlyReport {
   totalTollFees: number; // Totale pedaggi del mese
 }
 
+export interface TollBooth {
+  id: string;
+  entryStation: string;
+  exitStation: string;
+  amount: number;
+  usageCount: number;
+  lastUsed?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppState {
   people: Person[];
   vehicles: Vehicle[];
   trips: Trip[];
   savedRoutes: SavedRoute[];
+  tollBooths: TollBooth[];
 }
 
 export interface UserProfile {

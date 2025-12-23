@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { AppState, Person, Vehicle, Trip, SavedRoute, MonthlyReport, RouteDistance } from '../types';
+import { AppState, Person, Vehicle, Trip, SavedRoute, MonthlyReport, RouteDistance, TollBooth } from '../types';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { supabase } from '../lib/supabase';
@@ -27,6 +27,9 @@ interface AppContextType {
   getVehiclesForPerson: (personId: string) => Vehicle[];
   getSavedRoute: (id: string) => SavedRoute | undefined;
   getRouteDistance: (routeId: string, distanceId: string) => RouteDistance | undefined;
+  getTollBooth: (entryStation: string, exitStation: string) => TollBooth | undefined;
+  searchTollStations: (query: string) => Promise<string[]>;
+  handleTollBoothOnTripSave: (entryStation: string, exitStation: string, amount: number) => Promise<void>;
   formatDate: (dateString: string) => string;
   loading: boolean;
 }
@@ -38,7 +41,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     people: [],
     vehicles: [],
     trips: [],
-    savedRoutes: []
+    savedRoutes: [],
+    tollBooths: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -50,12 +54,13 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     try {
       setLoading(true);
 
-      const [peopleRes, vehiclesRes, tripsRes, routesRes, distancesRes] = await Promise.all([
+      const [peopleRes, vehiclesRes, tripsRes, routesRes, distancesRes, tollBoothsRes] = await Promise.all([
         supabase.from('people').select('*').order('created_at', { ascending: false }),
         supabase.from('vehicles').select('*').order('created_at', { ascending: false }),
         supabase.from('trips').select('*').order('date', { ascending: false }),
         supabase.from('saved_routes').select('*').order('created_at', { ascending: false }),
-        supabase.from('route_distances').select('*')
+        supabase.from('route_distances').select('*'),
+        supabase.from('toll_booths').select('*').order('usage_count', { ascending: false })
       ]);
 
       const people: Person[] = (peopleRes.data || []).map(p => ({
@@ -121,7 +126,18 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         distances: distancesMap.get(r.id) || []
       }));
 
-      setState({ people, vehicles, trips, savedRoutes });
+      const tollBooths: TollBooth[] = (tollBoothsRes.data || []).map(tb => ({
+        id: tb.id,
+        entryStation: tb.entry_station,
+        exitStation: tb.exit_station,
+        amount: parseFloat(tb.amount),
+        usageCount: tb.usage_count,
+        lastUsed: tb.last_used,
+        createdAt: tb.created_at,
+        updatedAt: tb.updated_at
+      }));
+
+      setState({ people, vehicles, trips, savedRoutes, tollBooths });
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -284,6 +300,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (error) throw error;
 
+    if (trip.hasToll && trip.tollEntryStation && trip.tollExitStation && trip.tollAmount) {
+      await handleTollBoothOnTripSave(trip.tollEntryStation, trip.tollExitStation, trip.tollAmount);
+    }
+
     setState(prev => ({
       ...prev,
       trips: [{
@@ -330,6 +350,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .eq('id', trip.id);
 
     if (error) throw error;
+
+    if (trip.hasToll && trip.tollEntryStation && trip.tollExitStation && trip.tollAmount) {
+      await handleTollBoothOnTripSave(trip.tollEntryStation, trip.tollExitStation, trip.tollAmount);
+    }
 
     setState(prev => ({
       ...prev,
@@ -519,6 +543,113 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     return route?.distances.find(d => d.id === distanceId);
   };
 
+  const getTollBooth = (entryStation: string, exitStation: string): TollBooth | undefined => {
+    return state.tollBooths.find(
+      tb => tb.entryStation.toLowerCase() === entryStation.toLowerCase() &&
+            tb.exitStation.toLowerCase() === exitStation.toLowerCase()
+    );
+  };
+
+  const searchTollStations = async (query: string): Promise<string[]> => {
+    const normalizedQuery = query.toLowerCase();
+    const stations = new Set<string>();
+
+    state.tollBooths.forEach(tb => {
+      if (tb.entryStation.toLowerCase().includes(normalizedQuery)) {
+        stations.add(tb.entryStation);
+      }
+      if (tb.exitStation.toLowerCase().includes(normalizedQuery)) {
+        stations.add(tb.exitStation);
+      }
+    });
+
+    const result = Array.from(stations).sort((a, b) => {
+      const aUsage = state.tollBooths
+        .filter(tb => tb.entryStation === a || tb.exitStation === a)
+        .reduce((sum, tb) => sum + tb.usageCount, 0);
+      const bUsage = state.tollBooths
+        .filter(tb => tb.entryStation === b || tb.exitStation === b)
+        .reduce((sum, tb) => sum + tb.usageCount, 0);
+      return bUsage - aUsage;
+    });
+
+    return result;
+  };
+
+  const handleTollBoothOnTripSave = async (entryStation: string, exitStation: string, amount: number) => {
+    if (!entryStation.trim() || !exitStation.trim() || amount <= 0) return;
+
+    const existing = getTollBooth(entryStation, exitStation);
+
+    if (existing) {
+      const needsUpdate = existing.amount !== amount;
+
+      const { data, error } = await supabase
+        .from('toll_booths')
+        .update({
+          amount: amount,
+          usage_count: existing.usageCount + 1,
+          last_used: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating toll booth:', error);
+        return;
+      }
+
+      setState(prev => ({
+        ...prev,
+        tollBooths: prev.tollBooths.map(tb =>
+          tb.id === existing.id
+            ? {
+                ...tb,
+                amount: parseFloat(data.amount),
+                usageCount: data.usage_count,
+                lastUsed: data.last_used,
+                updatedAt: data.updated_at
+              }
+            : tb
+        )
+      }));
+    } else {
+      const { data, error } = await supabase
+        .from('toll_booths')
+        .insert([{
+          entry_station: entryStation,
+          exit_station: exitStation,
+          amount: amount,
+          usage_count: 1,
+          last_used: new Date().toISOString()
+        }])
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating toll booth:', error);
+        return;
+      }
+
+      const newTollBooth: TollBooth = {
+        id: data.id,
+        entryStation: data.entry_station,
+        exitStation: data.exit_station,
+        amount: parseFloat(data.amount),
+        usageCount: data.usage_count,
+        lastUsed: data.last_used,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      };
+
+      setState(prev => ({
+        ...prev,
+        tollBooths: [newTollBooth, ...prev.tollBooths]
+      }));
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return format(new Date(dateString), 'dd MMMM yyyy', { locale: it });
   };
@@ -591,6 +722,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     getVehiclesForPerson,
     getSavedRoute,
     getRouteDistance,
+    getTollBooth,
+    searchTollStations,
+    handleTollBoothOnTripSave,
     formatDate,
     loading
   };

@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route } from 'lucide-react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
 import Select from '../components/Select';
+import AutocompleteInput from '../components/AutocompleteInput';
 import { useAppContext } from '../context/AppContext';
 import { calculateDistance } from '../utils/distanceCalculator';
 import { Trip, Role } from '../types';
@@ -45,18 +46,23 @@ interface FormErrors {
 const TripForm: React.FC = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { 
-    state, 
-    addTrip, 
-    updateTrip, 
-    getPerson, 
+  const location = useLocation();
+  const {
+    state,
+    addTrip,
+    updateTrip,
+    getPerson,
     getVehicle,
-    getVehiclesForPerson, 
-    getSavedRoute 
+    getVehiclesForPerson,
+    getSavedRoute,
+    getTollBooth,
+    searchTollStations
   } = useAppContext();
 
   const isEditing = !!id;
   const trip = isEditing ? state.trips.find((t) => t.id === id) : null;
+  const isDuplicating = !!(location.state as any)?.duplicateTrip;
+  const duplicateData = isDuplicating ? (location.state as any).duplicateTrip : null;
 
   const [formData, setFormData] = useState<FormData>({
     date: new Date().toISOString().split('T')[0],
@@ -84,6 +90,7 @@ const TripForm: React.FC = () => {
   const [reimbursement, setReimbursement] = useState<number | null>(null);
   const [tollAmount, setTollAmount] = useState<number | null>(null);
   const [availableDistances, setAvailableDistances] = useState<{ value: string; label: string; }[]>([]);
+  const [matchedTollBooth, setMatchedTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
 
   useEffect(() => {
     if (trip) {
@@ -141,6 +148,57 @@ const TripForm: React.FC = () => {
       setFormData(prev => ({ ...prev, vehicleId: '' }));
     }
   }, [formData.personId, availableVehicles]);
+
+  useEffect(() => {
+    if (isDuplicating && duplicateData) {
+      const person = getPerson(duplicateData.personId);
+
+      if (duplicateData.personId) {
+        updateAvailableVehicles(duplicateData.personId);
+        updateAvailableRoles(duplicateData.personId);
+      }
+
+      if (duplicateData.savedRouteId) {
+        updateAvailableDistances(duplicateData.savedRouteId);
+      }
+
+      setFormData({
+        date: new Date().toISOString().split('T')[0],
+        personId: duplicateData.personId,
+        vehicleId: duplicateData.vehicleId,
+        tripRole: duplicateData.tripRole || 'docente',
+        origin: duplicateData.origin,
+        destination: duplicateData.destination,
+        distance: duplicateData.distance.toString(),
+        purpose: duplicateData.purpose,
+        isRoundTrip: duplicateData.isRoundTrip,
+        savedRouteId: duplicateData.savedRouteId || '',
+        selectedDistanceId: duplicateData.selectedDistanceId || '',
+        useCustomOrigin: person ? duplicateData.origin !== person.homeAddress : false,
+        useCustomDestination: !duplicateData.savedRouteId,
+        hasToll: duplicateData.hasToll || false,
+        tollEntryStation: duplicateData.tollEntryStation || '',
+        tollExitStation: duplicateData.tollExitStation || '',
+        tollAmount: duplicateData.tollAmount ? duplicateData.tollAmount.toString() : '',
+      });
+    }
+  }, [isDuplicating]);
+
+  useEffect(() => {
+    if (formData.hasToll && formData.tollEntryStation && formData.tollExitStation) {
+      const matched = getTollBooth(formData.tollEntryStation, formData.tollExitStation);
+      if (matched) {
+        setMatchedTollBooth({ amount: matched.amount, usageCount: matched.usageCount });
+        if (!formData.tollAmount || formData.tollAmount === '') {
+          setFormData(prev => ({ ...prev, tollAmount: matched.amount.toString() }));
+        }
+      } else {
+        setMatchedTollBooth(null);
+      }
+    } else {
+      setMatchedTollBooth(null);
+    }
+  }, [formData.tollEntryStation, formData.tollExitStation, formData.hasToll]);
 
   useEffect(() => {
     calculateReimbursement();
@@ -374,11 +432,15 @@ const TripForm: React.FC = () => {
     }
   };
 
+  const getSuggestions = async (query: string) => {
+    const stations = await searchTollStations(query);
+    return stations.map(station => ({ value: station }));
+  };
+
   const handleOpenGoogleMaps = () => {
     try {
       calculateDistance(formData.origin, formData.destination);
     } catch (error) {
-      // The error contains the instructions for the user
       if (error instanceof Error) {
         alert(error.message);
       }
@@ -436,9 +498,24 @@ const TripForm: React.FC = () => {
           Torna all'elenco
         </Button>
         <h1 className="text-2xl font-bold text-gray-800">
-          {isEditing ? 'Modifica Tragitto' : 'Nuovo Tragitto'}
+          {isEditing ? 'Modifica Tragitto' : isDuplicating ? 'Duplica Tragitto' : 'Nuovo Tragitto'}
         </h1>
       </div>
+
+      {isDuplicating && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <div className="flex items-start">
+            <Copy className="h-5 w-5 text-blue-500 mr-3 mt-0.5" />
+            <div>
+              <h3 className="font-medium text-blue-800 mb-1">Creazione da duplicato</h3>
+              <p className="text-sm text-blue-700">
+                Stai creando un nuovo tragitto basato su uno esistente. La data è stata aggiornata a oggi.
+                Modifica i dati necessari e salva per creare il nuovo tragitto.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Card>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -752,33 +829,51 @@ const TripForm: React.FC = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <Input
+                  <AutocompleteInput
                     id="tollEntryStation"
                     name="tollEntryStation"
                     label="Casello di Entrata"
                     value={formData.tollEntryStation}
                     onChange={handleChange}
+                    getSuggestions={getSuggestions}
                     placeholder="es. Treviso"
                   />
-                  <Input
+                  <AutocompleteInput
                     id="tollExitStation"
                     name="tollExitStation"
                     label="Casello di Uscita"
                     value={formData.tollExitStation}
                     onChange={handleChange}
+                    getSuggestions={getSuggestions}
                     placeholder="es. Vicenza"
                   />
-                  <Input
-                    id="tollAmount"
-                    name="tollAmount"
-                    label="Importo Pedaggio (€)"
-                    type="number"
-                    step="0.10"
-                    min="0"
-                    value={formData.tollAmount}
-                    onChange={handleChange}
-                    placeholder="es. 3.50"
-                  />
+                  <div>
+                    <Input
+                      id="tollAmount"
+                      name="tollAmount"
+                      label="Importo Pedaggio (€)"
+                      type="number"
+                      step="0.10"
+                      min="0"
+                      value={formData.tollAmount}
+                      onChange={handleChange}
+                      placeholder="es. 3.50"
+                    />
+                    {matchedTollBooth && (
+                      <div className="mt-1 flex items-center text-xs text-green-600">
+                        <Info className="h-3 w-3 mr-1" />
+                        <span>
+                          Importo salvato: {matchedTollBooth.amount.toFixed(2)} € (usato {matchedTollBooth.usageCount} {matchedTollBooth.usageCount === 1 ? 'volta' : 'volte'})
+                        </span>
+                      </div>
+                    )}
+                    {!matchedTollBooth && formData.tollEntryStation && formData.tollExitStation && (
+                      <div className="mt-1 flex items-center text-xs text-blue-600">
+                        <Info className="h-3 w-3 mr-1" />
+                        <span>Nuova combinazione caselli</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
