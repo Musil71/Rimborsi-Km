@@ -148,9 +148,9 @@ const TripsPage: React.FC = () => {
     {
       key: 'actions',
       header: 'Azioni',
-      className: 'text-right w-80',
+      className: 'text-right w-32',
       render: (trip: Trip) => (
-        <div className="flex justify-end space-x-2 whitespace-nowrap">
+        <div className="flex flex-col items-end space-y-2">
           <Button
             variant="info"
             size="sm"

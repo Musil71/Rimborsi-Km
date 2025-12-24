@@ -73,9 +73,9 @@ const VehiclesPage: React.FC = () => {
     {
       key: 'actions',
       header: 'Azioni',
-      className: 'text-right',
+      className: 'text-right w-32',
       render: (vehicle: Vehicle) => (
-        <div className="flex justify-end space-x-2">
+        <div className="flex flex-col items-end space-y-2">
           <Button
             variant="info"
             size="sm"
