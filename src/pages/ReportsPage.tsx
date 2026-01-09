@@ -140,6 +140,15 @@ const ReportsPage: React.FC = () => {
       },
     },
     {
+      key: 'rate',
+      header: 'Tariffa (€/km)',
+      render: (trip: Trip) => {
+        const vehicle = getVehicle(trip.vehicleId);
+        if (!vehicle) return <span>-</span>;
+        return <span className="text-gray-700">{vehicle.reimbursementRate.toFixed(4)} €</span>;
+      },
+    },
+    {
       key: 'reimbursement',
       header: 'Rimborso (€)',
       render: (trip: Trip) => {
