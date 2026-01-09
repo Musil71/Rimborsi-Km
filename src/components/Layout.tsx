@@ -50,9 +50,16 @@ const Layout: React.FC = () => {
       {/* Header */}
       <header className="bg-teal-700 text-white shadow-md">
         <div className="container mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center space-x-2">
-            <span className="font-semibold text-xl">ITFV</span>
-            <span className="hidden md:inline-block text-xl">Rimborsi Chilometrici</span>
+          <div className="flex items-center space-x-3">
+            <img
+              src="/logo.png"
+              alt="ITFV Logo"
+              className="h-10 w-auto object-contain"
+            />
+            <div className="flex flex-col">
+              <span className="font-semibold text-lg leading-tight">ITFV</span>
+              <span className="hidden md:inline-block text-sm leading-tight">Rimborsi Chilometrici</span>
+            </div>
           </div>
           <button 
             className="md:hidden p-2" 
