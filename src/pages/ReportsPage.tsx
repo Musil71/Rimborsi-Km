@@ -89,14 +89,14 @@ const ReportsPage: React.FC = () => {
 
   const handlePrintReport = () => {
     if (!report) return;
-    
+
     const person = getPerson(report.personId);
     if (!person) return;
-    
+
     const monthName = new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' });
     const title = `Rimborso Chilometrico - ${person.name} ${person.surname} - ${monthName} ${report.year}`;
-    
-    generatePDF(report, person, title);
+
+    generatePDF(report, person, title, getVehicle);
   };
 
   const columns = [

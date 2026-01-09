@@ -13,27 +13,45 @@ declare module 'jspdf' {
 export const generatePDF = (
   report: MonthlyReport,
   person: Person,
-  title: string
+  title: string,
+  getVehicle: (id: string) => Vehicle | undefined
 ) => {
   const doc = new jsPDF();
-  
-  // Add title
-  doc.setFontSize(20);
-  doc.setTextColor(0, 102, 102);
-  doc.text(title, 14, 22);
-  
-  // Add institute info
-  doc.setFontSize(12);
+
+  // Add logo
+  const logoImg = '/logo.jpg';
+  try {
+    doc.addImage(logoImg, 'JPEG', 14, 15, 25, 25);
+  } catch (error) {
+    console.error('Error loading logo:', error);
+  }
+
+  // Add institute info next to logo
+  doc.setFontSize(14);
   doc.setTextColor(0, 0, 0);
-  doc.text('Istituto Veneto di Terapia Familiare', 14, 32);
+  doc.setFont(undefined, 'bold');
+  doc.text('Istituto Veneto di Terapia Familiare', 45, 25);
+  doc.setFont(undefined, 'normal');
   doc.setFontSize(10);
-  doc.text('Via della Quercia 2/B, Treviso', 14, 38);
+  doc.text('Via della Quercia 2/B, Treviso', 45, 32);
+
+  // Add separator line
+  doc.setDrawColor(200, 200, 200);
+  doc.line(14, 45, 196, 45);
   
-  // Add report details
-  doc.setFontSize(12);
-  doc.setTextColor(0, 0, 0);
-  
+  // Add report title
+  doc.setFontSize(16);
+  doc.setTextColor(50, 50, 50);
+  doc.setFont(undefined, 'bold');
   const monthName = new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' });
+  doc.text(`Rimborso Chilometrico - ${person.name} ${person.surname}`, 14, 55);
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(12);
+  doc.text(`${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${report.year}`, 14, 62);
+
+  // Add report details
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
 
   const roles = [];
   if (person.isDocente) roles.push('Docente');
@@ -41,21 +59,21 @@ export const generatePDF = (
   if (person.isDipendente) roles.push('Dipendente');
   const rolesText = roles.length > 0 ? roles.join(', ') : 'Nessun ruolo';
 
-  doc.text(`Persona: ${person.name} ${person.surname}`, 14, 50);
-  doc.text(`Ruoli: ${rolesText}`, 14, 58);
-  doc.text(`Periodo: ${monthName} ${report.year}`, 14, 66);
+  doc.text(`Persona: ${person.name} ${person.surname}`, 14, 72);
+  doc.text(`Ruoli: ${rolesText}`, 14, 78);
+  doc.text(`Periodo: ${monthName} ${report.year}`, 14, 84);
   
   // Add summary box
   doc.setFillColor(240, 240, 240);
-  doc.roundedRect(14, 75, 182, 35, 3, 3, 'F');
+  doc.roundedRect(14, 92, 182, 35, 3, 3, 'F');
   doc.setFont(undefined, 'bold');
-  doc.text('Riepilogo:', 18, 85);
+  doc.text('Riepilogo:', 18, 102);
   doc.setFont(undefined, 'normal');
-  doc.text(`Totale Kilometri: ${report.totalDistance.toFixed(1)} km`, 18, 93);
-  doc.text(`Rimborso Chilometrico: ${report.totalReimbursement.toFixed(2)} €`, 18, 101);
-  doc.text(`Pedaggi Autostradali: ${report.totalTollFees.toFixed(2)} €`, 120, 93);
+  doc.text(`Totale Kilometri: ${report.totalDistance.toFixed(1)} km`, 18, 110);
+  doc.text(`Rimborso Chilometrico: ${report.totalReimbursement.toFixed(2)} €`, 18, 118);
+  doc.text(`Pedaggi Autostradali: ${report.totalTollFees.toFixed(2)} €`, 120, 110);
   doc.setFont(undefined, 'bold');
-  doc.text(`TOTALE GENERALE: ${(report.totalReimbursement + report.totalTollFees).toFixed(2)} €`, 120, 101);
+  doc.text(`TOTALE GENERALE: ${(report.totalReimbursement + report.totalTollFees).toFixed(2)} €`, 120, 118);
   doc.setFont(undefined, 'normal');
   
   // Format date for display
@@ -79,10 +97,8 @@ export const generatePDF = (
     ];
 
     const tableRows = report.trips.map((trip: Trip) => {
-      // Find vehicle for this trip
-      const vehicle = (globalThis as any).state?.vehicles.find(
-        (v: Vehicle) => v.id === trip.vehicleId
-      );
+      // Find vehicle for this trip using the provided function
+      const vehicle = getVehicle(trip.vehicleId);
 
       const distance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
       const rate = vehicle ? vehicle.reimbursementRate : 0;
@@ -109,7 +125,7 @@ export const generatePDF = (
     
     // @ts-ignore
     doc.autoTable({
-      startY: 120,
+      startY: 135,
       head: [tableColumn],
       body: tableRows,
       theme: 'striped',
@@ -139,11 +155,11 @@ export const generatePDF = (
       },
     });
   } else {
-    doc.text('Nessun viaggio registrato per questo periodo', 14, 120);
+    doc.text('Nessun viaggio registrato per questo periodo', 14, 135);
   }
   
   // Add signature area
-  const finalY = (doc as any).lastAutoTable?.finalY || 130;
+  const finalY = (doc as any).lastAutoTable?.finalY || 145;
   doc.text('Firma Responsabile', 14, finalY + 30);
   doc.line(14, finalY + 40, 80, finalY + 40);
   
