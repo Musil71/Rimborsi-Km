@@ -333,7 +333,7 @@ const TripForm: React.FC = () => {
     }
 
     if (!formData.purpose.trim()) {
-      newErrors.purpose = 'Lo scopo del viaggio è obbligatorio';
+      newErrors.purpose = 'Lo scopo della trasferta è obbligatorio';
     }
 
     setErrors(newErrors);
@@ -513,7 +513,7 @@ const TripForm: React.FC = () => {
           Torna all'elenco
         </Button>
         <h1 className="text-2xl font-bold text-gray-800">
-          {isEditing ? 'Modifica Tragitto' : isDuplicating ? 'Duplica Tragitto' : 'Nuovo Tragitto'}
+          {isEditing ? 'Modifica Trasferta' : isDuplicating ? 'Duplica Trasferta' : 'Nuova Trasferta'}
         </h1>
       </div>
 
@@ -524,8 +524,8 @@ const TripForm: React.FC = () => {
             <div>
               <h3 className="font-medium text-blue-800 mb-1">Creazione da duplicato</h3>
               <p className="text-sm text-blue-700">
-                Stai creando un nuovo tragitto basato su uno esistente. La data è stata aggiornata a oggi.
-                Modifica i dati necessari e salva per creare il nuovo tragitto.
+                Stai creando una nuova trasferta basata su una esistente. La data è stata aggiornata a oggi.
+                Modifica i dati necessari e salva per creare la nuova trasferta.
               </p>
             </div>
           </div>
@@ -581,7 +581,7 @@ const TripForm: React.FC = () => {
                 required
               />
               <p className="text-xs text-blue-600 mt-1">
-                Seleziona il ruolo in cui {state.people.find(p => p.id === formData.personId)?.name} ha svolto questo viaggio
+                Seleziona il ruolo in cui {state.people.find(p => p.id === formData.personId)?.name} ha svolto questa trasferta
               </p>
             </div>
           )}
@@ -816,7 +816,7 @@ const TripForm: React.FC = () => {
                   onChange={handleChange}
                 />
                 <label htmlFor="hasToll" className="text-sm font-medium text-amber-900">
-                  Questo viaggio include pedaggi autostradali
+                  Questa trasferta include pedaggi autostradali
                 </label>
               </div>
             </div>
@@ -906,7 +906,7 @@ const TripForm: React.FC = () => {
                   onChange={handleChange}
                 />
                 <label htmlFor="hasMeal" className="text-sm font-medium text-green-900">
-                  Questo viaggio include rimborso vitto
+                  Questa trasferta include rimborso vitto
                 </label>
               </div>
             </div>
@@ -948,7 +948,7 @@ const TripForm: React.FC = () => {
               <div className="flex items-start">
                 <Calculator className="h-5 w-5 text-primary-500 mr-3 mt-1" />
                 <div className="flex-grow">
-                  <h3 className="text-sm font-medium text-primary-800 mb-2">Riepilogo Rimborso</h3>
+                  <h3 className="text-sm font-medium text-primary-800 mb-2">Riepilogo Spese di Trasferta</h3>
 
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
@@ -1006,7 +1006,7 @@ const TripForm: React.FC = () => {
 
           <div>
             <label htmlFor="purpose" className="block text-sm font-medium text-gray-700 mb-1">
-              Scopo del viaggio
+              Scopo della trasferta
             </label>
             <textarea
               id="purpose"
@@ -1015,7 +1015,7 @@ const TripForm: React.FC = () => {
               className="shadow-sm focus:ring-primary-500 focus:border-primary-500 block w-full sm:text-sm border-gray-300 rounded-md"
               value={formData.purpose}
               onChange={handleChange}
-              placeholder="Descrivi lo scopo del viaggio"
+              placeholder="Descrivi lo scopo della trasferta"
               required
             ></textarea>
             {errors.purpose && <p className="mt-1 text-sm text-red-600">{errors.purpose}</p>}
@@ -1028,7 +1028,7 @@ const TripForm: React.FC = () => {
               icon={<Save size={18} />}
               disabled={!hasAvailableVehicles && formData.personId}
             >
-              {isEditing ? 'Salva Modifiche' : 'Registra Tragitto'}
+              {isEditing ? 'Salva Modifiche' : 'Registra Trasferta'}
             </Button>
           </div>
         </form>

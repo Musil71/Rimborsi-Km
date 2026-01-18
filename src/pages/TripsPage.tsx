@@ -16,7 +16,7 @@ const TripsPage: React.FC = () => {
   const [monthFilter, setMonthFilter] = useState('');
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Sei sicuro di voler eliminare questo tragitto?')) {
+    if (window.confirm('Sei sicuro di voler eliminare questa trasferta?')) {
       deleteTrip(id);
     }
   };
@@ -195,10 +195,10 @@ const TripsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-800">Tragitti</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Trasferte</h1>
         <Link to="/tragitti/nuovo">
           <Button variant="primary" icon={<PlusCircle size={18} />}>
-            Nuovo Tragitto
+            Nuova Trasferta
           </Button>
         </Link>
       </div>
@@ -210,7 +210,7 @@ const TripsPage: React.FC = () => {
           </div>
           <input
             type="text"
-            placeholder="Cerca tragitti..."
+            placeholder="Cerca trasferte..."
             className="pl-10 shadow-sm focus:ring-teal-500 focus:border-teal-500 block w-full sm:text-sm border-gray-300 rounded-md"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
@@ -242,8 +242,8 @@ const TripsPage: React.FC = () => {
           onRowClick={(trip) => navigate(`/tragitti/${trip.id}`)}
           emptyMessage={
             searchTerm || personFilter || monthFilter
-              ? "Nessun tragitto trovato con questi filtri"
-              : "Nessun tragitto registrato. Clicca su 'Nuovo Tragitto' per iniziare."
+              ? "Nessuna trasferta trovata con questi filtri"
+              : "Nessuna trasferta registrata. Clicca su 'Nuova Trasferta' per iniziare."
           }
         />
       </Card>

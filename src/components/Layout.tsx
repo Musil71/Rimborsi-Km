@@ -40,7 +40,7 @@ const Layout: React.FC = () => {
   const navItems = [
     { path: '/', label: 'Home', icon: <Home size={20} /> },
     { path: '/persone', label: 'Persone', icon: <Users size={20} /> },
-    { path: '/tragitti', label: 'Tragitti', icon: <Map size={20} /> },
+    { path: '/tragitti', label: 'Trasferte', icon: <Map size={20} /> },
     { path: '/percorsi', label: 'Percorsi', icon: <Route size={20} /> },
     { path: '/report', label: 'Report', icon: <BarChart3 size={20} /> },
   ];
@@ -58,7 +58,7 @@ const Layout: React.FC = () => {
                 className="hidden lg:flex items-center space-x-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105"
               >
                 <Plus size={20} />
-                <span>Nuovo Rimborso</span>
+                <span>Nuova Trasferta</span>
               </Link>
             </div>
 
@@ -124,7 +124,7 @@ const Layout: React.FC = () => {
               onClick={closeMenu}
             >
               <Plus size={24} />
-              <span>Nuovo Rimborso</span>
+              <span>Nuova Trasferta</span>
             </Link>
 
             <div className="border-t border-gray-200 mb-2"></div>

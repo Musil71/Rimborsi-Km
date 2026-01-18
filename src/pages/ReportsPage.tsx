@@ -100,7 +100,7 @@ const ReportsPage: React.FC = () => {
     if (!person) return;
 
     const monthName = new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' });
-    const title = `Rimborso Chilometrico - ${person.name} ${person.surname} - ${monthName} ${report.year}`;
+    const title = `Rimborso Spese di Trasferta - ${person.name} ${person.surname} - ${monthName} ${report.year}`;
 
     generatePDF(report, person, title, getVehicle);
   };
@@ -262,7 +262,7 @@ const ReportsPage: React.FC = () => {
 
             <Select
               id="tripRole"
-              label="Filtra per Ruolo Viaggio"
+              label="Filtra per Ruolo Trasferta"
               options={[
                 { value: 'all', label: 'Tutti i ruoli' },
                 { value: 'docente', label: 'Solo Docente' },
@@ -403,7 +403,7 @@ const ReportsPage: React.FC = () => {
                   </div>
                   <div className="ml-4">
                     <h3 className="text-sm font-medium text-gray-700">Totale Generale</h3>
-                    <p className="text-xs text-gray-600">Rimborso Chilometrico + Pedaggi + Vitto</p>
+                    <p className="text-xs text-gray-600">Km + Pedaggi + Vitto</p>
                   </div>
                 </div>
                 <p className="text-2xl font-bold text-purple-900">
@@ -420,7 +420,7 @@ const ReportsPage: React.FC = () => {
               />
             ) : (
               <div className="text-center py-6 bg-gray-50 rounded-lg">
-                <p className="text-gray-500">Nessun viaggio registrato in questo periodo</p>
+                <p className="text-gray-500">Nessuna trasferta registrata in questo periodo</p>
               </div>
             )}
           </div>
