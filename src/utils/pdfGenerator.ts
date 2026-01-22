@@ -14,7 +14,8 @@ export const generatePDF = (
   report: MonthlyReport,
   person: Person,
   title: string,
-  getVehicle: (id: string) => Vehicle | undefined
+  getVehicle: (id: string) => Vehicle | undefined,
+  selectedTripRole: string = 'all'
 ) => {
   const doc = new jsPDF();
 
@@ -36,7 +37,10 @@ export const generatePDF = (
   doc.setTextColor(50, 50, 50);
   doc.setFont(undefined, 'bold');
   const monthName = new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' });
-  doc.text(`Rimborso Chilometrico - ${person.name} ${person.surname}`, 14, 45);
+
+  // Add role to title if filtered
+  const roleLabel = selectedTripRole !== 'all' ? ` (${selectedTripRole.charAt(0).toUpperCase() + selectedTripRole.slice(1)})` : '';
+  doc.text(`Rimborso Chilometrico - ${person.name} ${person.surname}${roleLabel}`, 14, 45);
   doc.setFont(undefined, 'normal');
   doc.setFontSize(12);
   doc.text(`${monthName.charAt(0).toUpperCase() + monthName.slice(1)} ${report.year}`, 14, 52);
@@ -55,18 +59,27 @@ export const generatePDF = (
   doc.text(`Ruoli: ${rolesText}`, 14, 68);
   doc.text(`Periodo: ${monthName} ${report.year}`, 14, 74);
 
+  if (selectedTripRole !== 'all') {
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(200, 100, 0);
+    doc.text(`Report filtrato per ruolo: ${selectedTripRole.charAt(0).toUpperCase() + selectedTripRole.slice(1)}`, 14, 80);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(0, 0, 0);
+  }
+
   // Add summary box
+  const summaryY = selectedTripRole !== 'all' ? 88 : 82;
   doc.setFillColor(240, 240, 240);
-  doc.roundedRect(14, 82, 182, 35, 3, 3, 'F');
+  doc.roundedRect(14, summaryY, 182, 35, 3, 3, 'F');
   doc.setFont(undefined, 'bold');
-  doc.text('Riepilogo:', 18, 92);
+  doc.text('Riepilogo:', 18, summaryY + 10);
   doc.setFont(undefined, 'normal');
-  doc.text(`Totale Kilometri: ${report.totalDistance.toFixed(1)} km`, 18, 100);
-  doc.text(`Rimborso Chilometrico: ${report.totalReimbursement.toFixed(2)} €`, 18, 108);
-  doc.text(`Pedaggi Autostradali: ${report.totalTollFees.toFixed(2)} €`, 120, 100);
-  doc.text(`Rimborsi Vitto: ${report.totalMealReimbursement.toFixed(2)} €`, 120, 92);
+  doc.text(`Totale Kilometri: ${report.totalDistance.toFixed(1)} km`, 18, summaryY + 18);
+  doc.text(`Rimborso Chilometrico: ${report.totalReimbursement.toFixed(2)} €`, 18, summaryY + 26);
+  doc.text(`Pedaggi Autostradali: ${report.totalTollFees.toFixed(2)} €`, 120, summaryY + 18);
+  doc.text(`Rimborsi Vitto: ${report.totalMealReimbursement.toFixed(2)} €`, 120, summaryY + 10);
   doc.setFont(undefined, 'bold');
-  doc.text(`TOTALE GENERALE: ${(report.totalReimbursement + report.totalTollFees + report.totalMealReimbursement).toFixed(2)} €`, 18, 115);
+  doc.text(`TOTALE GENERALE: ${(report.totalReimbursement + report.totalTollFees + report.totalMealReimbursement).toFixed(2)} €`, 18, summaryY + 33);
   doc.setFont(undefined, 'normal');
   
   // Format date for display
@@ -81,6 +94,7 @@ export const generatePDF = (
       'Data',
       'Origine',
       'Destinazione',
+      'Ruolo',
       'Veicolo',
       'Km',
       'Tariffa',
@@ -89,6 +103,14 @@ export const generatePDF = (
       'Vitto',
       'Totale'
     ];
+
+    const getRoleLabel = (role?: string) => {
+      if (!role) return '-';
+      if (role === 'docente') return 'Doc';
+      if (role === 'amministratore') return 'Amm';
+      if (role === 'dipendente') return 'Dip';
+      return role;
+    };
 
     const tableRows = report.trips.map((trip: Trip) => {
       // Find vehicle for this trip using the provided function
@@ -113,6 +135,7 @@ export const generatePDF = (
         formatDate(trip.date),
         trip.origin.length > 12 ? trip.origin.substring(0, 12) + '...' : trip.origin,
         trip.destination.length > 12 ? trip.destination.substring(0, 12) + '...' : trip.destination,
+        getRoleLabel(trip.tripRole),
         vehicle ? `${vehicle.make} ${vehicle.model} (${vehicle.plate})` : 'N/A',
         `${distance.toFixed(1)}`,
         vehicle ? `${rate.toFixed(2)} €` : '-',
@@ -124,8 +147,9 @@ export const generatePDF = (
     });
     
     // @ts-ignore
+    const tableStartY = selectedTripRole !== 'all' ? 131 : 125;
     doc.autoTable({
-      startY: 125,
+      startY: tableStartY,
       head: [tableColumn],
       body: tableRows,
       theme: 'striped',
@@ -139,24 +163,26 @@ export const generatePDF = (
       },
       margin: { top: 10 },
       styles: {
-        fontSize: 8,
-        cellPadding: 2,
+        fontSize: 7,
+        cellPadding: 1.5,
       },
       columnStyles: {
-        0: { cellWidth: 18 },
-        1: { cellWidth: 20 },
-        2: { cellWidth: 20 },
-        3: { cellWidth: 28 },
-        4: { cellWidth: 12 },
-        5: { cellWidth: 14 },
-        6: { cellWidth: 16 },
+        0: { cellWidth: 16 },
+        1: { cellWidth: 18 },
+        2: { cellWidth: 18 },
+        3: { cellWidth: 10 },
+        4: { cellWidth: 26 },
+        5: { cellWidth: 10 },
+        6: { cellWidth: 12 },
         7: { cellWidth: 14 },
-        8: { cellWidth: 14 },
-        9: { cellWidth: 16 },
+        8: { cellWidth: 12 },
+        9: { cellWidth: 14 },
+        10: { cellWidth: 14 },
       },
     });
   } else {
-    doc.text('Nessun viaggio registrato per questo periodo', 14, 125);
+    const noTripsY = selectedTripRole !== 'all' ? 131 : 125;
+    doc.text('Nessun viaggio registrato per questo periodo', 14, noTripsY);
   }
   
   // Add signature area

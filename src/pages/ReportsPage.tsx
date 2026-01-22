@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, Download, Printer, Calendar, User, Banknote } from 'lucide-react';
+import { FileText, Download, Printer, Calendar, User, Banknote, AlertTriangle } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Select from '../components/Select';
@@ -19,6 +19,7 @@ const ReportsPage: React.FC = () => {
   const [filterAmministratori, setFilterAmministratori] = useState(true);
   const [filterDipendenti, setFilterDipendenti] = useState(true);
   const [selectedTripRole, setSelectedTripRole] = useState<string>('all');
+  const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
 
   // Generate month options
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
@@ -51,6 +52,29 @@ const ReportsPage: React.FC = () => {
       parseInt(selectedMonth),
       parseInt(selectedYear)
     );
+
+    // Detect multi-role trips
+    if (reportData) {
+      const roleCounts: Record<string, number> = {
+        docente: 0,
+        amministratore: 0,
+        dipendente: 0
+      };
+
+      reportData.trips.forEach((trip: Trip) => {
+        if (trip.tripRole) {
+          roleCounts[trip.tripRole] = (roleCounts[trip.tripRole] || 0) + 1;
+        }
+      });
+
+      const rolesUsed = Object.entries(roleCounts).filter(([_, count]) => count > 0);
+      const hasMultipleRoles = rolesUsed.length > 1;
+
+      setMultiRoleInfo({
+        hasMultipleRoles,
+        roleCounts
+      });
+    }
 
     // Filter trips by selected role if not 'all'
     if (reportData && selectedTripRole !== 'all') {
@@ -102,7 +126,25 @@ const ReportsPage: React.FC = () => {
     const monthName = new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' });
     const title = `Rimborso Spese di Trasferta - ${person.name} ${person.surname} - ${monthName} ${report.year}`;
 
-    generatePDF(report, person, title, getVehicle);
+    generatePDF(report, person, title, getVehicle, selectedTripRole);
+  };
+
+  const getRoleBadge = (role?: string) => {
+    if (!role) return null;
+
+    const roleConfig: Record<string, { label: string; bgColor: string; textColor: string }> = {
+      docente: { label: 'Docente', bgColor: 'bg-teal-100', textColor: 'text-teal-700' },
+      amministratore: { label: 'Amministratore', bgColor: 'bg-blue-100', textColor: 'text-blue-700' },
+      dipendente: { label: 'Dipendente', bgColor: 'bg-gray-100', textColor: 'text-gray-700' }
+    };
+
+    const config = roleConfig[role] || { label: role, bgColor: 'bg-gray-100', textColor: 'text-gray-700' };
+
+    return (
+      <span className={`inline-flex items-center px-2 py-1 rounded text-xs font-medium ${config.bgColor} ${config.textColor}`}>
+        {config.label}
+      </span>
+    );
   };
 
   const columns = [
@@ -122,6 +164,11 @@ const ReportsPage: React.FC = () => {
           {trip.isRoundTrip && <span className="ml-1 text-teal-600">(A/R)</span>}
         </span>
       ),
+    },
+    {
+      key: 'role',
+      header: 'Ruolo',
+      render: (trip: Trip) => getRoleBadge(trip.tripRole),
     },
     {
       key: 'vehicle',
@@ -306,13 +353,51 @@ const ReportsPage: React.FC = () => {
 
         {report && (
           <div className="border-t border-gray-200 pt-6">
+            {multiRoleInfo?.hasMultipleRoles && selectedTripRole === 'all' && (
+              <div className="mb-4 bg-amber-50 border-l-4 border-amber-400 p-4 rounded">
+                <div className="flex items-start">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-sm font-medium text-amber-800 mb-1">
+                      Attenzione: Trasferte in Più Ruoli Rilevate
+                    </h3>
+                    <p className="text-sm text-amber-700 mb-2">
+                      Questa persona ha effettuato trasferte in ruoli diversi durante questo periodo:
+                    </p>
+                    <ul className="text-sm text-amber-700 list-disc list-inside mb-2">
+                      {multiRoleInfo.roleCounts.docente > 0 && (
+                        <li><strong>{multiRoleInfo.roleCounts.docente}</strong> trasferte come <strong>Docente</strong></li>
+                      )}
+                      {multiRoleInfo.roleCounts.amministratore > 0 && (
+                        <li><strong>{multiRoleInfo.roleCounts.amministratore}</strong> trasferte come <strong>Amministratore</strong></li>
+                      )}
+                      {multiRoleInfo.roleCounts.dipendente > 0 && (
+                        <li><strong>{multiRoleInfo.roleCounts.dipendente}</strong> trasferte come <strong>Dipendente</strong></li>
+                      )}
+                    </ul>
+                    <p className="text-sm text-amber-700">
+                      <strong>Raccomandazione:</strong> Si consiglia di generare report separati per ogni ruolo utilizzando il filtro "Filtra per Ruolo Trasferta" sopra.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h2 className="text-lg font-medium text-gray-900">
-                  Report: {getPerson(report.personId)?.name} {getPerson(report.personId)?.surname}
-                </h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-medium text-gray-900">
+                    Report: {getPerson(report.personId)?.name} {getPerson(report.personId)?.surname}
+                  </h2>
+                  {selectedTripRole !== 'all' && getRoleBadge(selectedTripRole)}
+                </div>
                 <p className="text-sm text-gray-600">
                   {new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' })} {report.year}
+                  {selectedTripRole !== 'all' && (
+                    <span className="ml-2 text-amber-600 font-medium">
+                      (Report filtrato per ruolo)
+                    </span>
+                  )}
                 </p>
               </div>
               <div className="flex space-x-2">
@@ -346,11 +431,14 @@ const ReportsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+              <div className={`p-4 rounded-lg border ${selectedTripRole !== 'all' ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-300' : 'bg-green-50 border-green-100'}`}>
                 <div className="flex items-center">
-                  <User className="h-8 w-8 text-green-500 mr-3" />
+                  <User className={`h-8 w-8 mr-3 ${selectedTripRole !== 'all' ? 'text-amber-500' : 'text-green-500'}`} />
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700">Totale Km</h3>
+                    <h3 className="text-sm font-medium text-gray-700">
+                      Totale Km
+                      {selectedTripRole !== 'all' && <span className="text-xs text-amber-600 ml-1">(filtrato)</span>}
+                    </h3>
                     <p className="text-lg font-semibold text-gray-900">
                       {report.totalDistance.toFixed(1)} km
                     </p>
@@ -358,11 +446,14 @@ const ReportsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-teal-50 p-4 rounded-lg border border-teal-100">
+              <div className={`p-4 rounded-lg border ${selectedTripRole !== 'all' ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-300' : 'bg-teal-50 border-teal-100'}`}>
                 <div className="flex items-center">
-                  <FileText className="h-8 w-8 text-teal-500 mr-3" />
+                  <FileText className={`h-8 w-8 mr-3 ${selectedTripRole !== 'all' ? 'text-amber-500' : 'text-teal-500'}`} />
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700">Rimborso Km</h3>
+                    <h3 className="text-sm font-medium text-gray-700">
+                      Rimborso Km
+                      {selectedTripRole !== 'all' && <span className="text-xs text-amber-600 ml-1">(filtrato)</span>}
+                    </h3>
                     <p className="text-lg font-semibold text-gray-900">
                       {report.totalReimbursement.toFixed(2)} €
                     </p>
@@ -370,11 +461,14 @@ const ReportsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-amber-50 p-4 rounded-lg border border-amber-100">
+              <div className={`p-4 rounded-lg border ${selectedTripRole !== 'all' ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-300' : 'bg-amber-50 border-amber-100'}`}>
                 <div className="flex items-center">
                   <Banknote className="h-8 w-8 text-amber-500 mr-3" />
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700">Pedaggi</h3>
+                    <h3 className="text-sm font-medium text-gray-700">
+                      Pedaggi
+                      {selectedTripRole !== 'all' && <span className="text-xs text-amber-600 ml-1">(filtrato)</span>}
+                    </h3>
                     <p className="text-lg font-semibold text-gray-900">
                       {report.totalTollFees.toFixed(2)} €
                     </p>
@@ -382,11 +476,14 @@ const ReportsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-green-50 p-4 rounded-lg border border-green-100">
+              <div className={`p-4 rounded-lg border ${selectedTripRole !== 'all' ? 'bg-amber-50 border-amber-200 ring-2 ring-amber-300' : 'bg-green-50 border-green-100'}`}>
                 <div className="flex items-center">
-                  <FileText className="h-8 w-8 text-green-500 mr-3" />
+                  <FileText className={`h-8 w-8 mr-3 ${selectedTripRole !== 'all' ? 'text-amber-500' : 'text-green-500'}`} />
                   <div>
-                    <h3 className="text-sm font-medium text-gray-700">Rimborsi Vitto</h3>
+                    <h3 className="text-sm font-medium text-gray-700">
+                      Rimborsi Vitto
+                      {selectedTripRole !== 'all' && <span className="text-xs text-amber-600 ml-1">(filtrato)</span>}
+                    </h3>
                     <p className="text-lg font-semibold text-gray-900">
                       {report.totalMealReimbursement.toFixed(2)} €
                     </p>
