@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy } from 'lucide-react';
+import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy, Plus, Trash2, Utensils } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -8,7 +8,12 @@ import Select from '../components/Select';
 import AutocompleteInput from '../components/AutocompleteInput';
 import { useAppContext } from '../context/AppContext';
 import { calculateDistance } from '../utils/distanceCalculator';
-import { Trip, Role } from '../types';
+import { Trip, Role, TripMeal } from '../types';
+
+interface MealEntry {
+  mealType: 'pranzo' | 'cena';
+  amount: string;
+}
 
 const DEFAULT_ORIGIN = 'Via della Quercia 2/B, 31100 Treviso';
 
@@ -30,9 +35,7 @@ interface FormData {
   tollEntryStation: string;
   tollExitStation: string;
   tollAmount: string;
-  hasMeal: boolean;
-  mealType: 'pranzo' | 'cena';
-  mealAmount: string;
+  meals: MealEntry[];
 }
 
 interface FormErrors {
@@ -85,9 +88,7 @@ const TripForm: React.FC = () => {
     tollEntryStation: '',
     tollExitStation: '',
     tollAmount: '',
-    hasMeal: false,
-    mealType: 'pranzo',
-    mealAmount: '',
+    meals: [],
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -134,9 +135,7 @@ const TripForm: React.FC = () => {
         tollEntryStation: trip.tollEntryStation || '',
         tollExitStation: trip.tollExitStation || '',
         tollAmount: trip.tollAmount ? trip.tollAmount.toString() : '',
-        hasMeal: trip.hasMeal || false,
-        mealType: trip.mealType || 'pranzo',
-        mealAmount: trip.mealAmount ? trip.mealAmount.toString() : '',
+        meals: tripMealsToEntries(trip),
       });
     }
   }, [trip]);
@@ -189,9 +188,7 @@ const TripForm: React.FC = () => {
         tollEntryStation: duplicateData.tollEntryStation || '',
         tollExitStation: duplicateData.tollExitStation || '',
         tollAmount: duplicateData.tollAmount ? duplicateData.tollAmount.toString() : '',
-        hasMeal: duplicateData.hasMeal || false,
-        mealType: duplicateData.mealType || 'pranzo',
-        mealAmount: duplicateData.mealAmount ? duplicateData.mealAmount.toString() : '',
+        meals: tripMealsToEntries(duplicateData),
       });
     }
   }, [isDuplicating]);
@@ -215,7 +212,7 @@ const TripForm: React.FC = () => {
   useEffect(() => {
     calculateReimbursement();
     calculateTollAmount();
-  }, [formData.distance, formData.vehicleId, formData.isRoundTrip, formData.tollAmount, formData.hasToll, formData.mealAmount, formData.hasMeal]);
+  }, [formData.distance, formData.vehicleId, formData.isRoundTrip, formData.tollAmount, formData.hasToll, formData.meals]);
 
   const calculateReimbursement = () => {
     if (!formData.vehicleId || !formData.distance) {
@@ -298,6 +295,39 @@ const TripForm: React.FC = () => {
     } else {
       setAvailableDistances([]);
     }
+  };
+
+  const tripMealsToEntries = (trip: Partial<Trip>): MealEntry[] => {
+    if (trip.meals && trip.meals.length > 0) {
+      return trip.meals.map(m => ({ mealType: m.mealType, amount: m.amount.toString() }));
+    }
+    if (trip.hasMeal && trip.mealAmount) {
+      return [{ mealType: trip.mealType || 'pranzo', amount: trip.mealAmount.toString() }];
+    }
+    return [];
+  };
+
+  const addMeal = () => {
+    const usedTypes = formData.meals.map(m => m.mealType);
+    const nextType: 'pranzo' | 'cena' = !usedTypes.includes('pranzo') ? 'pranzo' : 'cena';
+    setFormData(prev => ({
+      ...prev,
+      meals: [...prev.meals, { mealType: nextType, amount: '' }]
+    }));
+  };
+
+  const removeMeal = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      meals: prev.meals.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateMeal = (index: number, field: keyof MealEntry, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      meals: prev.meals.map((m, i) => i === index ? { ...m, [field]: value } : m)
+    }));
   };
 
   const validateForm = (): boolean => {
@@ -466,6 +496,10 @@ const TripForm: React.FC = () => {
       return;
     }
 
+    const validMeals: Omit<TripMeal, 'id' | 'tripId'>[] = formData.meals
+      .filter(m => m.amount && parseFloat(m.amount) > 0)
+      .map(m => ({ mealType: m.mealType, amount: parseFloat(m.amount) }));
+
     const tripData = {
       date: formData.date,
       personId: formData.personId,
@@ -482,18 +516,12 @@ const TripForm: React.FC = () => {
       tollEntryStation: formData.hasToll ? formData.tollEntryStation : undefined,
       tollExitStation: formData.hasToll ? formData.tollExitStation : undefined,
       tollAmount: formData.hasToll && formData.tollAmount ? parseFloat(formData.tollAmount) : undefined,
-      hasMeal: formData.hasMeal,
-      mealType: formData.hasMeal ? formData.mealType : undefined,
-      mealAmount: formData.hasMeal && formData.mealAmount ? parseFloat(formData.mealAmount) : undefined,
     };
 
     if (isEditing && trip) {
-      updateTrip({
-        id: trip.id,
-        ...tripData,
-      });
+      updateTrip({ id: trip.id, ...tripData }, validMeals);
     } else {
-      addTrip(tripData);
+      addTrip(tripData, validMeals);
     }
 
     navigate('/tragitti');
@@ -895,50 +923,74 @@ const TripForm: React.FC = () => {
           </div>
 
           <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-4">
-            <div className="mb-3">
+            <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <input
-                  id="hasMeal"
-                  name="hasMeal"
-                  type="checkbox"
-                  className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
-                  checked={formData.hasMeal}
-                  onChange={handleChange}
-                />
-                <label htmlFor="hasMeal" className="text-sm font-medium text-green-900">
-                  Questa trasferta include rimborso vitto
-                </label>
+                <Utensils className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium text-green-900">Rimborso Pasti</span>
               </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={<Plus size={14} />}
+                onClick={addMeal}
+                disabled={formData.meals.length >= 2}
+              >
+                Aggiungi pasto
+              </Button>
             </div>
 
-            {formData.hasMeal && (
+            {formData.meals.length === 0 && (
+              <p className="text-sm text-green-700 italic">
+                Nessun pasto aggiunto. Clicca "Aggiungi pasto" per inserire pranzo o cena.
+              </p>
+            )}
+
+            {formData.meals.length > 0 && (
               <div className="space-y-3">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <Select
-                    id="mealType"
-                    name="mealType"
-                    label="Tipo di pasto"
-                    options={[
-                      { value: 'pranzo', label: 'Pranzo' },
-                      { value: 'cena', label: 'Cena' }
-                    ]}
-                    value={formData.mealType}
-                    onChange={handleChange}
-                    required
-                  />
-                  <Input
-                    id="mealAmount"
-                    name="mealAmount"
-                    label="Importo Rimborso Vitto (€)"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.mealAmount}
-                    onChange={handleChange}
-                    placeholder="es. 15.00"
-                    required
-                  />
-                </div>
+                {formData.meals.map((meal, index) => {
+                  const otherType = formData.meals.find((m, i) => i !== index)?.mealType;
+                  const availableTypes = [
+                    { value: 'pranzo', label: 'Pranzo' },
+                    { value: 'cena', label: 'Cena' },
+                  ].filter(t => t.value === meal.mealType || t.value !== otherType);
+
+                  return (
+                    <div key={index} className="flex items-end gap-3 bg-white rounded-md p-3 border border-green-200">
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Tipo di pasto</label>
+                        <select
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                          value={meal.mealType}
+                          onChange={e => updateMeal(index, 'mealType', e.target.value)}
+                        >
+                          {availableTypes.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Importo (€)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500 sm:text-sm"
+                          value={meal.amount}
+                          onChange={e => updateMeal(index, 'amount', e.target.value)}
+                          placeholder="es. 15.00"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="mb-0.5 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        onClick={() => removeMeal(index)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -978,24 +1030,23 @@ const TripForm: React.FC = () => {
                       </>
                     )}
 
-                    {formData.hasMeal && formData.mealAmount && parseFloat(formData.mealAmount) > 0 && (
-                      <>
+                    {formData.meals.filter(m => m.amount && parseFloat(m.amount) > 0).map((meal, index) => (
+                      <div key={index}>
                         <div className="border-t border-primary-200 pt-2 flex justify-between items-center">
-                          <span className="text-sm text-primary-700">Rimborso Vitto:</span>
+                          <span className="text-sm text-primary-700">
+                            Rimborso {meal.mealType === 'pranzo' ? 'Pranzo' : 'Cena'}:
+                          </span>
                           <span className="text-lg font-semibold text-primary-900">
-                            {parseFloat(formData.mealAmount).toFixed(2)} €
+                            {parseFloat(meal.amount).toFixed(2)} €
                           </span>
                         </div>
-                        <p className="text-xs text-primary-600">
-                          {formData.mealType === 'pranzo' ? 'Pranzo' : 'Cena'}
-                        </p>
-                      </>
-                    )}
+                      </div>
+                    ))}
 
                     <div className="border-t-2 border-primary-300 pt-2 mt-2 flex justify-between items-center">
                       <span className="text-sm font-medium text-primary-800">Totale Generale:</span>
                       <span className="text-xl font-bold text-primary-900">
-                        {(reimbursement + (tollAmount || 0) + (formData.hasMeal && formData.mealAmount ? parseFloat(formData.mealAmount) : 0)).toFixed(2)} €
+                        {(reimbursement + (tollAmount || 0) + formData.meals.reduce((sum, m) => sum + (m.amount && parseFloat(m.amount) > 0 ? parseFloat(m.amount) : 0), 0)).toFixed(2)} €
                       </span>
                     </div>
                   </div>
