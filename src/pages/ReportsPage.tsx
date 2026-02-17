@@ -138,7 +138,8 @@ const ReportsPage: React.FC = () => {
     const periodLabel = `${monthName} ${report.year}`;
     const personLabel = `${person.name} ${person.surname}`;
 
-    const primaryColor: [number, number, number] = [30, 80, 150];
+    const primaryColor: [number, number, number] = [13, 148, 136];
+    const primaryDark: [number, number, number] = [15, 118, 110];
     const lightGray: [number, number, number] = [248, 248, 248];
     const darkGray: [number, number, number] = [50, 50, 50];
 
@@ -206,7 +207,7 @@ const ReportsPage: React.FC = () => {
         head: [['Data', 'Percorso', 'Targa', 'Km', 'Rimborso', 'Pedaggio', 'Vitto', 'Motivo']],
         body: tripRows,
         theme: 'striped',
-        headStyles: { fillColor: [70, 130, 180], textColor: 255, fontSize: 8 },
+        headStyles: { fillColor: primaryDark, textColor: 255, fontSize: 8 },
         bodyStyles: { fontSize: 7.5 },
         columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 42 }, 2: { cellWidth: 18 }, 3: { cellWidth: 16 }, 4: { cellWidth: 18 }, 5: { cellWidth: 18 }, 6: { cellWidth: 22 } },
         margin: { left: 14, right: 14 }
@@ -235,7 +236,7 @@ const ReportsPage: React.FC = () => {
         ]),
         foot: [['', '', 'TOTALE', `${report.totalExpenses.toFixed(2)} €`]],
         theme: 'striped',
-        headStyles: { fillColor: [70, 130, 180], textColor: 255, fontSize: 9 },
+        headStyles: { fillColor: primaryDark, textColor: 255, fontSize: 9 },
         footStyles: { fontStyle: 'bold', fillColor: lightGray },
         columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
         margin: { left: 14, right: 14 }
@@ -263,7 +264,7 @@ const ReportsPage: React.FC = () => {
         ]),
         foot: [['', 'TOTALE', `${report.totalAccommodations.toFixed(2)} €`]],
         theme: 'striped',
-        headStyles: { fillColor: [70, 130, 180], textColor: 255, fontSize: 9 },
+        headStyles: { fillColor: primaryDark, textColor: 255, fontSize: 9 },
         footStyles: { fontStyle: 'bold', fillColor: lightGray },
         columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
         margin: { left: 14, right: 14 }
