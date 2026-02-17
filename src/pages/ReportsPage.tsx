@@ -152,6 +152,12 @@ const ReportsPage: React.FC = () => {
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text(`${personLabel}  |  ${periodLabel}`, 14, 22);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('ITFV', 196, 12, { align: 'right' });
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Istituto Tecnico Ferraris-Varese', 196, 20, { align: 'right' });
 
     let y = 36;
 
