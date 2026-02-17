@@ -1,6 +1,6 @@
-// Types for the application
-
 export type Role = 'docente' | 'dipendente' | 'amministratore';
+
+export type ExpenseType = 'treno' | 'supplemento_treno' | 'aereo' | 'mezzi_pubblici' | 'taxi' | 'parcheggio' | 'altro';
 
 export interface Person {
   id: string;
@@ -20,16 +20,16 @@ export interface Vehicle {
   make: string;
   model: string;
   plate: string;
-  reimbursementRate: number; // Euro per km
+  reimbursementRate: number;
 }
 
 export interface RouteDistance {
   id: string;
-  label: string; // es. "Strada Normale", "Autostrada", "Percorso Veloce"
-  distance: number; // in km
-  tollEntryStation?: string; // Casello di entrata (opzionale)
-  tollExitStation?: string; // Casello di uscita (opzionale)
-  tollAmount?: number; // Importo pedaggio in euro (opzionale)
+  label: string;
+  distance: number;
+  tollEntryStation?: string;
+  tollExitStation?: string;
+  tollAmount?: number;
 }
 
 export interface SavedRoute {
@@ -37,7 +37,14 @@ export interface SavedRoute {
   name: string;
   origin: string;
   destination: string;
-  distances: RouteDistance[]; // Array di distanze multiple
+  distances: RouteDistance[];
+}
+
+export interface TripMeal {
+  id: string;
+  tripId: string;
+  mealType: 'pranzo' | 'cena';
+  amount: number;
 }
 
 export interface Trip {
@@ -47,30 +54,59 @@ export interface Trip {
   vehicleId: string;
   origin: string;
   destination: string;
-  distance: number; // in km
+  distance: number;
   purpose: string;
   isRoundTrip: boolean;
-  tripRole?: Role; // Il ruolo in cui è stato effettuato il viaggio
+  tripRole?: Role;
   savedRouteId?: string;
-  selectedDistanceId?: string; // ID della distanza selezionata dal percorso salvato
-  hasToll?: boolean; // Se questo viaggio include pedaggi
-  tollEntryStation?: string; // Casello di entrata
-  tollExitStation?: string; // Casello di uscita
-  tollAmount?: number; // Importo pedaggio in euro
-  hasMeal?: boolean; // Se questo viaggio include rimborso vitto
-  mealType?: 'pranzo' | 'cena'; // Tipo di pasto: pranzo o cena
-  mealAmount?: number; // Importo rimborso vitto in euro
+  selectedDistanceId?: string;
+  hasToll?: boolean;
+  tollEntryStation?: string;
+  tollExitStation?: string;
+  tollAmount?: number;
+  hasMeal?: boolean;
+  mealType?: 'pranzo' | 'cena';
+  mealAmount?: number;
+  meals?: TripMeal[];
+}
+
+export interface TripExpense {
+  id: string;
+  personId: string;
+  date: string;
+  expenseType: ExpenseType;
+  description: string;
+  fromLocation: string;
+  toLocation: string;
+  amount: number;
+  notes: string;
+  createdAt: string;
+}
+
+export interface Accommodation {
+  id: string;
+  personId: string;
+  dateFrom: string;
+  dateTo: string;
+  location: string;
+  amount: number;
+  notes: string;
+  createdAt: string;
 }
 
 export interface MonthlyReport {
-  month: number; // 0-11
+  month: number;
   year: number;
   personId: string;
   trips: Trip[];
   totalDistance: number;
   totalReimbursement: number;
-  totalTollFees: number; // Totale pedaggi del mese
-  totalMealReimbursement: number; // Totale rimborsi vitto in euro
+  totalTollFees: number;
+  totalMealReimbursement: number;
+  expenses: TripExpense[];
+  totalExpenses: number;
+  accommodations: Accommodation[];
+  totalAccommodations: number;
 }
 
 export interface TollBooth {
@@ -90,6 +126,8 @@ export interface AppState {
   trips: Trip[];
   savedRoutes: SavedRoute[];
   tollBooths: TollBooth[];
+  tripExpenses: TripExpense[];
+  accommodations: Accommodation[];
 }
 
 export interface UserProfile {
@@ -103,3 +141,13 @@ export interface AuthState {
   user: UserProfile | null;
   loading: boolean;
 }
+
+export const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
+  treno: 'Biglietto ferroviario',
+  supplemento_treno: 'Supplemento ferroviario',
+  aereo: 'Biglietto aereo',
+  mezzi_pubblici: 'Biglietti mezzi pubblici',
+  taxi: 'Taxi',
+  parcheggio: 'Parcheggio',
+  altro: 'Altro',
+};

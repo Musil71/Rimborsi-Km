@@ -14,6 +14,8 @@ import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
+import ExpensesPage from './pages/ExpensesPage';
+import AccommodationsPage from './pages/AccommodationsPage';
 
 function App() {
   return (
@@ -43,6 +45,12 @@ function App() {
 
         {/* Report routes */}
         <Route path="report" element={<ReportsPage />} />
+
+        {/* Spese routes */}
+        <Route path="spese" element={<ExpensesPage />} />
+
+        {/* Alloggi routes */}
+        <Route path="alloggi" element={<AccommodationsPage />} />
       </Route>
     </Routes>
   );
