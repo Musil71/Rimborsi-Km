@@ -129,6 +129,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         tollEntryStation: t.toll_entry_station,
         tollExitStation: t.toll_exit_station,
         tollAmount: t.toll_amount ? parseFloat(t.toll_amount) : undefined,
+        returnTollEntryStation: t.return_toll_entry_station,
+        returnTollExitStation: t.return_toll_exit_station,
+        returnTollAmount: t.return_toll_amount ? parseFloat(t.return_toll_amount) : undefined,
         hasMeal: t.has_meal || false,
         mealType: t.meal_type,
         mealAmount: t.meal_amount ? parseFloat(t.meal_amount) : undefined,
@@ -170,6 +173,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       const tripExpenses: TripExpense[] = (expensesRes.data || []).map(e => ({
         id: e.id,
         personId: e.person_id,
+        tripId: e.trip_id || undefined,
         date: e.date,
         expenseType: e.expense_type,
         description: e.description || '',
@@ -350,6 +354,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toll_entry_station: trip.tollEntryStation,
         toll_exit_station: trip.tollExitStation,
         toll_amount: trip.tollAmount,
+        return_toll_entry_station: trip.returnTollEntryStation,
+        return_toll_exit_station: trip.returnTollExitStation,
+        return_toll_amount: trip.returnTollAmount,
         has_meal: (meals && meals.length > 0) || trip.hasMeal || false,
         meal_type: trip.mealType,
         meal_amount: trip.mealAmount
@@ -374,6 +381,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     if (trip.hasToll && trip.tollEntryStation && trip.tollExitStation && trip.tollAmount) {
       await handleTollBoothOnTripSave(trip.tollEntryStation, trip.tollExitStation, trip.tollAmount);
     }
+    if (trip.isRoundTrip && trip.returnTollEntryStation && trip.returnTollExitStation && trip.returnTollAmount) {
+      await handleTollBoothOnTripSave(trip.returnTollEntryStation, trip.returnTollExitStation, trip.returnTollAmount);
+    }
 
     setState(prev => ({
       ...prev,
@@ -394,6 +404,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         tollEntryStation: data.toll_entry_station,
         tollExitStation: data.toll_exit_station,
         tollAmount: data.toll_amount ? parseFloat(data.toll_amount) : undefined,
+        returnTollEntryStation: data.return_toll_entry_station,
+        returnTollExitStation: data.return_toll_exit_station,
+        returnTollAmount: data.return_toll_amount ? parseFloat(data.return_toll_amount) : undefined,
         hasMeal: data.has_meal || false,
         mealType: data.meal_type,
         mealAmount: data.meal_amount ? parseFloat(data.meal_amount) : undefined,
@@ -421,6 +434,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         toll_entry_station: trip.tollEntryStation,
         toll_exit_station: trip.tollExitStation,
         toll_amount: trip.tollAmount,
+        return_toll_entry_station: trip.returnTollEntryStation,
+        return_toll_exit_station: trip.returnTollExitStation,
+        return_toll_amount: trip.returnTollAmount,
         has_meal: (meals && meals.length > 0) || trip.hasMeal || false,
         meal_type: trip.mealType,
         meal_amount: trip.mealAmount
@@ -448,6 +464,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     if (trip.hasToll && trip.tollEntryStation && trip.tollExitStation && trip.tollAmount) {
       await handleTollBoothOnTripSave(trip.tollEntryStation, trip.tollExitStation, trip.tollAmount);
+    }
+    if (trip.isRoundTrip && trip.returnTollEntryStation && trip.returnTollExitStation && trip.returnTollAmount) {
+      await handleTollBoothOnTripSave(trip.returnTollEntryStation, trip.returnTollExitStation, trip.returnTollAmount);
     }
 
     setState(prev => ({
@@ -615,6 +634,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .from('trip_expenses')
       .insert([{
         person_id: expense.personId,
+        trip_id: expense.tripId || null,
         date: expense.date,
         expense_type: expense.expenseType,
         description: expense.description,
@@ -633,6 +653,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       tripExpenses: [{
         id: data.id,
         personId: data.person_id,
+        tripId: data.trip_id || undefined,
         date: data.date,
         expenseType: data.expense_type,
         description: data.description || '',

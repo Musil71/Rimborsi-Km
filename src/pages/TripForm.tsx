@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy, Plus, Trash2, Utensils } from 'lucide-react';
+import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy, Plus, Trash2, Utensils, Receipt } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -8,10 +8,18 @@ import Select from '../components/Select';
 import AutocompleteInput from '../components/AutocompleteInput';
 import { useAppContext } from '../context/AppContext';
 import { calculateDistance } from '../utils/distanceCalculator';
-import { Trip, Role, TripMeal } from '../types';
+import { Trip, Role, TripMeal, ExpenseType, EXPENSE_TYPE_LABELS } from '../types';
 
 interface MealEntry {
   mealType: 'pranzo' | 'cena';
+  amount: string;
+}
+
+interface TravelExpenseEntry {
+  expenseType: ExpenseType;
+  fromLocation: string;
+  toLocation: string;
+  description: string;
   amount: string;
 }
 
@@ -35,7 +43,12 @@ interface FormData {
   tollEntryStation: string;
   tollExitStation: string;
   tollAmount: string;
+  hasReturnToll: boolean;
+  returnTollEntryStation: string;
+  returnTollExitStation: string;
+  returnTollAmount: string;
   meals: MealEntry[];
+  travelExpenses: TravelExpenseEntry[];
 }
 
 interface FormErrors {
@@ -57,6 +70,8 @@ const TripForm: React.FC = () => {
     state,
     addTrip,
     updateTrip,
+    addTripExpense,
+    deleteTripExpense,
     getPerson,
     getVehicle,
     getVehiclesForPerson,
@@ -88,7 +103,12 @@ const TripForm: React.FC = () => {
     tollEntryStation: '',
     tollExitStation: '',
     tollAmount: '',
+    hasReturnToll: false,
+    returnTollEntryStation: '',
+    returnTollExitStation: '',
+    returnTollAmount: '',
     meals: [],
+    travelExpenses: [],
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -98,6 +118,7 @@ const TripForm: React.FC = () => {
   const [tollAmount, setTollAmount] = useState<number | null>(null);
   const [availableDistances, setAvailableDistances] = useState<{ value: string; label: string; }[]>([]);
   const [matchedTollBooth, setMatchedTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
+  const [matchedReturnTollBooth, setMatchedReturnTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
 
   useEffect(() => {
     if (trip) {
@@ -135,7 +156,12 @@ const TripForm: React.FC = () => {
         tollEntryStation: trip.tollEntryStation || '',
         tollExitStation: trip.tollExitStation || '',
         tollAmount: trip.tollAmount ? trip.tollAmount.toString() : '',
+        hasReturnToll: !!(trip.returnTollEntryStation || trip.returnTollExitStation),
+        returnTollEntryStation: trip.returnTollEntryStation || '',
+        returnTollExitStation: trip.returnTollExitStation || '',
+        returnTollAmount: trip.returnTollAmount ? trip.returnTollAmount.toString() : '',
         meals: tripMealsToEntries(trip),
+        travelExpenses: tripExpensesToEntries(trip.id),
       });
     }
   }, [trip]);
@@ -188,7 +214,12 @@ const TripForm: React.FC = () => {
         tollEntryStation: duplicateData.tollEntryStation || '',
         tollExitStation: duplicateData.tollExitStation || '',
         tollAmount: duplicateData.tollAmount ? duplicateData.tollAmount.toString() : '',
+        hasReturnToll: !!(duplicateData.returnTollEntryStation || duplicateData.returnTollExitStation),
+        returnTollEntryStation: duplicateData.returnTollEntryStation || '',
+        returnTollExitStation: duplicateData.returnTollExitStation || '',
+        returnTollAmount: duplicateData.returnTollAmount ? duplicateData.returnTollAmount.toString() : '',
         meals: tripMealsToEntries(duplicateData),
+        travelExpenses: [],
       });
     }
   }, [isDuplicating]);
@@ -210,9 +241,25 @@ const TripForm: React.FC = () => {
   }, [formData.tollEntryStation, formData.tollExitStation, formData.hasToll]);
 
   useEffect(() => {
+    if (formData.hasReturnToll && formData.returnTollEntryStation && formData.returnTollExitStation) {
+      const matched = getTollBooth(formData.returnTollEntryStation, formData.returnTollExitStation);
+      if (matched) {
+        setMatchedReturnTollBooth({ amount: matched.amount, usageCount: matched.usageCount });
+        if (!formData.returnTollAmount || formData.returnTollAmount === '') {
+          setFormData(prev => ({ ...prev, returnTollAmount: matched.amount.toString() }));
+        }
+      } else {
+        setMatchedReturnTollBooth(null);
+      }
+    } else {
+      setMatchedReturnTollBooth(null);
+    }
+  }, [formData.returnTollEntryStation, formData.returnTollExitStation, formData.hasReturnToll]);
+
+  useEffect(() => {
     calculateReimbursement();
     calculateTollAmount();
-  }, [formData.distance, formData.vehicleId, formData.isRoundTrip, formData.tollAmount, formData.hasToll, formData.meals]);
+  }, [formData.distance, formData.vehicleId, formData.isRoundTrip, formData.tollAmount, formData.hasToll, formData.returnTollAmount, formData.hasReturnToll, formData.meals]);
 
   const calculateReimbursement = () => {
     if (!formData.vehicleId || !formData.distance) {
@@ -249,8 +296,16 @@ const TripForm: React.FC = () => {
       return;
     }
 
-    const actualToll = formData.isRoundTrip ? toll * 2 : toll;
-    setTollAmount(actualToll);
+    let total = toll;
+    if (formData.isRoundTrip) {
+      if (formData.hasReturnToll && formData.returnTollAmount) {
+        const returnToll = parseFloat(formData.returnTollAmount);
+        total += isNaN(returnToll) ? toll : returnToll;
+      } else {
+        total += toll;
+      }
+    }
+    setTollAmount(total);
   };
 
   const updateAvailableVehicles = (personId: string) => {
@@ -297,6 +352,18 @@ const TripForm: React.FC = () => {
     }
   };
 
+  const tripExpensesToEntries = (tripId: string): TravelExpenseEntry[] => {
+    return state.tripExpenses
+      .filter(e => e.tripId === tripId)
+      .map(e => ({
+        expenseType: e.expenseType,
+        fromLocation: e.fromLocation,
+        toLocation: e.toLocation,
+        description: e.description,
+        amount: e.amount.toString(),
+      }));
+  };
+
   const tripMealsToEntries = (trip: Partial<Trip>): MealEntry[] => {
     if (trip.meals && trip.meals.length > 0) {
       return trip.meals.map(m => ({ mealType: m.mealType, amount: m.amount.toString() }));
@@ -329,6 +396,35 @@ const TripForm: React.FC = () => {
       meals: prev.meals.map((m, i) => i === index ? { ...m, [field]: value } : m)
     }));
   };
+
+  const addTravelExpense = () => {
+    setFormData(prev => ({
+      ...prev,
+      travelExpenses: [...prev.travelExpenses, {
+        expenseType: 'taxi',
+        fromLocation: '',
+        toLocation: '',
+        description: '',
+        amount: '',
+      }]
+    }));
+  };
+
+  const removeTravelExpense = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      travelExpenses: prev.travelExpenses.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateTravelExpense = (index: number, field: keyof TravelExpenseEntry, value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      travelExpenses: prev.travelExpenses.map((e, i) => i === index ? { ...e, [field]: value } : e)
+    }));
+  };
+
+  const needsRoute = (type: ExpenseType) => type === 'treno' || type === 'supplemento_treno' || type === 'aereo' || type === 'mezzi_pubblici';
 
   const validateForm = (): boolean => {
     const newErrors: FormErrors = {};
@@ -489,7 +585,7 @@ const TripForm: React.FC = () => {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!validateForm()) {
@@ -516,12 +612,48 @@ const TripForm: React.FC = () => {
       tollEntryStation: formData.hasToll ? formData.tollEntryStation : undefined,
       tollExitStation: formData.hasToll ? formData.tollExitStation : undefined,
       tollAmount: formData.hasToll && formData.tollAmount ? parseFloat(formData.tollAmount) : undefined,
+      returnTollEntryStation: (formData.hasToll && formData.isRoundTrip && formData.hasReturnToll) ? formData.returnTollEntryStation : undefined,
+      returnTollExitStation: (formData.hasToll && formData.isRoundTrip && formData.hasReturnToll) ? formData.returnTollExitStation : undefined,
+      returnTollAmount: (formData.hasToll && formData.isRoundTrip && formData.hasReturnToll && formData.returnTollAmount) ? parseFloat(formData.returnTollAmount) : undefined,
     };
 
+    const validExpenses = formData.travelExpenses.filter(e => e.amount && parseFloat(e.amount) > 0);
+
     if (isEditing && trip) {
-      updateTrip({ id: trip.id, ...tripData }, validMeals);
+      await updateTrip({ id: trip.id, ...tripData }, validMeals);
+      const existing = state.tripExpenses.filter(e => e.tripId === trip.id);
+      for (const e of existing) { await deleteTripExpense(e.id); }
+      for (const e of validExpenses) {
+        await addTripExpense({
+          personId: formData.personId,
+          tripId: trip.id,
+          date: formData.date,
+          expenseType: e.expenseType,
+          description: e.description,
+          fromLocation: e.fromLocation,
+          toLocation: e.toLocation,
+          amount: parseFloat(e.amount),
+          notes: '',
+        });
+      }
     } else {
-      addTrip(tripData, validMeals);
+      await addTrip(tripData, validMeals);
+      const newTrip = state.trips[0];
+      if (newTrip && validExpenses.length > 0) {
+        for (const e of validExpenses) {
+          await addTripExpense({
+            personId: formData.personId,
+            tripId: newTrip.id,
+            date: formData.date,
+            expenseType: e.expenseType,
+            description: e.description,
+            fromLocation: e.fromLocation,
+            toLocation: e.toLocation,
+            amount: parseFloat(e.amount),
+            notes: '',
+          });
+        }
+      }
     }
 
     navigate('/tragitti');
@@ -922,6 +1054,185 @@ const TripForm: React.FC = () => {
             )}
           </div>
 
+          {formData.hasToll && formData.isRoundTrip && (
+            <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 mb-4">
+              <div className="mb-3">
+                <div className="flex items-center space-x-2">
+                  <input
+                    id="hasReturnToll"
+                    name="hasReturnToll"
+                    type="checkbox"
+                    className="h-4 w-4 text-amber-600 focus:ring-amber-500 border-gray-300 rounded"
+                    checked={formData.hasReturnToll}
+                    onChange={handleChange}
+                  />
+                  <label htmlFor="hasReturnToll" className="text-sm font-medium text-amber-900">
+                    Il ritorno ha caselli diversi dall'andata
+                  </label>
+                </div>
+                <p className="text-xs text-amber-700 mt-1 ml-6">
+                  Se non spuntato, il pedaggio del ritorno sarà uguale all'andata
+                </p>
+              </div>
+
+              {formData.hasReturnToll && (
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-amber-800">Caselli del ritorno</p>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <AutocompleteInput
+                      id="returnTollEntryStation"
+                      name="returnTollEntryStation"
+                      label="Casello Entrata Ritorno"
+                      value={formData.returnTollEntryStation}
+                      onChange={handleChange}
+                      getSuggestions={getSuggestions}
+                      placeholder="es. Vicenza"
+                    />
+                    <AutocompleteInput
+                      id="returnTollExitStation"
+                      name="returnTollExitStation"
+                      label="Casello Uscita Ritorno"
+                      value={formData.returnTollExitStation}
+                      onChange={handleChange}
+                      getSuggestions={getSuggestions}
+                      placeholder="es. Treviso"
+                    />
+                    <div>
+                      <Input
+                        id="returnTollAmount"
+                        name="returnTollAmount"
+                        label="Importo Pedaggio Ritorno (€)"
+                        type="number"
+                        step="0.10"
+                        min="0"
+                        value={formData.returnTollAmount}
+                        onChange={handleChange}
+                        placeholder="es. 3.50"
+                      />
+                      {matchedReturnTollBooth && (
+                        <div className="mt-1 flex items-center text-xs text-green-600">
+                          <Info className="h-3 w-3 mr-1" />
+                          <span>
+                            Importo salvato: {matchedReturnTollBooth.amount.toFixed(2)} € (usato {matchedReturnTollBooth.usageCount} {matchedReturnTollBooth.usageCount === 1 ? 'volta' : 'volte'})
+                          </span>
+                        </div>
+                      )}
+                      {!matchedReturnTollBooth && formData.returnTollEntryStation && formData.returnTollExitStation && (
+                        <div className="mt-1 flex items-center text-xs text-blue-600">
+                          <Info className="h-3 w-3 mr-1" />
+                          <span>Nuova combinazione caselli</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center space-x-2">
+                <Receipt className="h-5 w-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-900">Spese di Trasporto</span>
+                <span className="text-xs text-gray-500">(treno, aereo, taxi, bus, parcheggio, altro)</span>
+              </div>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                icon={<Plus size={14} />}
+                onClick={addTravelExpense}
+              >
+                Aggiungi spesa
+              </Button>
+            </div>
+
+            {formData.travelExpenses.length === 0 && (
+              <p className="text-sm text-gray-500 italic">
+                Nessuna spesa aggiunta. Clicca "Aggiungi spesa" per inserire treno, aereo, taxi, parcheggio, ecc.
+              </p>
+            )}
+
+            {formData.travelExpenses.length > 0 && (
+              <div className="space-y-3">
+                {formData.travelExpenses.map((expense, index) => (
+                  <div key={index} className="bg-white rounded-md p-3 border border-gray-200">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex-1 mr-3">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Tipo di spesa</label>
+                        <select
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 sm:text-sm"
+                          value={expense.expenseType}
+                          onChange={e => updateTravelExpense(index, 'expenseType', e.target.value)}
+                        >
+                          {(Object.keys(EXPENSE_TYPE_LABELS) as ExpenseType[]).map(t => (
+                            <option key={t} value={t}>{EXPENSE_TYPE_LABELS[t]}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="w-28">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Importo (€)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 sm:text-sm"
+                          value={expense.amount}
+                          onChange={e => updateTravelExpense(index, 'amount', e.target.value)}
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        className="ml-2 mt-5 p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                        onClick={() => removeTravelExpense(index)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                    {needsRoute(expense.expenseType) && (
+                      <div className="grid grid-cols-2 gap-2 mt-1">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Da</label>
+                          <input
+                            type="text"
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 sm:text-sm"
+                            value={expense.fromLocation}
+                            onChange={e => updateTravelExpense(index, 'fromLocation', e.target.value)}
+                            placeholder="es. Treviso"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">A</label>
+                          <input
+                            type="text"
+                            className="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 sm:text-sm"
+                            value={expense.toLocation}
+                            onChange={e => updateTravelExpense(index, 'toLocation', e.target.value)}
+                            placeholder="es. Milano"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {(expense.expenseType === 'taxi' || expense.expenseType === 'parcheggio' || expense.expenseType === 'altro') && (
+                      <div className="mt-1">
+                        <label className="block text-xs font-medium text-gray-600 mb-1">Descrizione</label>
+                        <input
+                          type="text"
+                          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-gray-500 focus:ring-gray-500 sm:text-sm"
+                          value={expense.description}
+                          onChange={e => updateTravelExpense(index, 'description', e.target.value)}
+                          placeholder={expense.expenseType === 'altro' ? 'Specificare...' : 'Dettagli opzionali'}
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
@@ -1043,10 +1354,26 @@ const TripForm: React.FC = () => {
                       </div>
                     ))}
 
+                    {formData.travelExpenses.filter(e => e.amount && parseFloat(e.amount) > 0).map((expense, index) => (
+                      <div key={index}>
+                        <div className="border-t border-primary-200 pt-2 flex justify-between items-center">
+                          <span className="text-sm text-primary-700">{EXPENSE_TYPE_LABELS[expense.expenseType]}:</span>
+                          <span className="text-lg font-semibold text-primary-900">
+                            {parseFloat(expense.amount).toFixed(2)} €
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+
                     <div className="border-t-2 border-primary-300 pt-2 mt-2 flex justify-between items-center">
                       <span className="text-sm font-medium text-primary-800">Totale Generale:</span>
                       <span className="text-xl font-bold text-primary-900">
-                        {(reimbursement + (tollAmount || 0) + formData.meals.reduce((sum, m) => sum + (m.amount && parseFloat(m.amount) > 0 ? parseFloat(m.amount) : 0), 0)).toFixed(2)} €
+                        {(
+                          reimbursement +
+                          (tollAmount || 0) +
+                          formData.meals.reduce((sum, m) => sum + (m.amount && parseFloat(m.amount) > 0 ? parseFloat(m.amount) : 0), 0) +
+                          formData.travelExpenses.reduce((sum, e) => sum + (e.amount && parseFloat(e.amount) > 0 ? parseFloat(e.amount) : 0), 0)
+                        ).toFixed(2)} €
                       </span>
                     </div>
                   </div>

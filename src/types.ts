@@ -64,6 +64,9 @@ export interface Trip {
   tollEntryStation?: string;
   tollExitStation?: string;
   tollAmount?: number;
+  returnTollEntryStation?: string;
+  returnTollExitStation?: string;
+  returnTollAmount?: number;
   hasMeal?: boolean;
   mealType?: 'pranzo' | 'cena';
   mealAmount?: number;
@@ -73,6 +76,7 @@ export interface Trip {
 export interface TripExpense {
   id: string;
   personId: string;
+  tripId?: string;
   date: string;
   expenseType: ExpenseType;
   description: string;
