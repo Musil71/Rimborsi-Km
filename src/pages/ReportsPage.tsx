@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
-import { FileText, Download, Printer, Calendar, User, Banknote, AlertTriangle } from 'lucide-react';
+import { FileText, Calendar, User, Banknote, AlertTriangle } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Select from '../components/Select';
 import Table from '../components/Table';
 import { useAppContext } from '../context/AppContext';
 import { Trip } from '../types';
-import { generatePDF } from '../utils/pdfGenerator';
 
 const ReportsPage: React.FC = () => {
   const { state, generateMonthlyReport, getPerson, getVehicle, formatDate } = useAppContext();
@@ -115,18 +114,6 @@ const ReportsPage: React.FC = () => {
     }
 
     setReport(reportData);
-  };
-
-  const handlePrintReport = () => {
-    if (!report) return;
-
-    const person = getPerson(report.personId);
-    if (!person) return;
-
-    const monthName = new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' });
-    const title = `Rimborso Spese di Trasferta - ${person.name} ${person.surname} - ${monthName} ${report.year}`;
-
-    generatePDF(report, person, title, getVehicle, selectedTripRole);
   };
 
   const getRoleBadge = (role?: string) => {
@@ -400,22 +387,7 @@ const ReportsPage: React.FC = () => {
                   )}
                 </p>
               </div>
-              <div className="flex space-x-2">
-                <Button
-                  variant="secondary"
-                  icon={<Printer size={18} />}
-                  onClick={handlePrintReport}
-                >
-                  Stampa
-                </Button>
-                <Button
-                  variant="success"
-                  icon={<Download size={18} />}
-                  onClick={handlePrintReport}
-                >
-                  Scarica PDF
-                </Button>
-              </div>
+              <div className="flex space-x-2"></div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
