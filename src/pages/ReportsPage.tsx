@@ -157,7 +157,7 @@ const ReportsPage: React.FC = () => {
     doc.text('ITFV', 196, 12, { align: 'right' });
     doc.setFontSize(7);
     doc.setFont('helvetica', 'normal');
-    doc.text('Istituto Tecnico Ferraris-Varese', 196, 20, { align: 'right' });
+    doc.text('Istituto Veneto di Terapia Familiare', 196, 20, { align: 'right' });
 
     let y = 36;
 
