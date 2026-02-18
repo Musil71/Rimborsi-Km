@@ -227,9 +227,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         is_docente: person.isDocente,
         is_amministratore: person.isAmministratore,
         is_dipendente: person.isDipendente,
-        email: person.email,
-        phone: person.phone,
-        home_address: person.homeAddress
+        email: person.email || null,
+        phone: person.phone || null,
+        home_address: person.homeAddress || null
       }])
       .select()
       .single();
@@ -261,9 +261,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         is_docente: person.isDocente,
         is_amministratore: person.isAmministratore,
         is_dipendente: person.isDipendente,
-        email: person.email,
-        phone: person.phone,
-        home_address: person.homeAddress
+        email: person.email || null,
+        phone: person.phone || null,
+        home_address: person.homeAddress || null
       })
       .eq('id', person.id);
 
