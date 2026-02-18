@@ -8,6 +8,7 @@ import { useAppContext } from '../context/AppContext';
 import { calculateDistance } from '../utils/distanceCalculator';
 import { SavedRoute, RouteDistance } from '../types';
 import { v4 as uuidv4 } from 'uuid';
+import { ITFV_OFFICES } from '../utils/itfvOffices';
 
 interface FormData {
   name: string;
@@ -240,27 +241,59 @@ const SavedRouteForm: React.FC = () => {
             </div>
           </div>
 
-          <Input
-            id="origin"
-            name="origin"
-            label="Indirizzo di Origine"
-            value={formData.origin}
-            onChange={handleChange}
-            error={errors.origin}
-            placeholder="Via, numero civico, città"
-            required
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Indirizzo di Origine
+            </label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {ITFV_OFFICES.map(office => (
+                <button
+                  key={office.id}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, origin: office.address }))}
+                  className="text-xs px-3 py-1 rounded-full border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                >
+                  {office.name}
+                </button>
+              ))}
+            </div>
+            <Input
+              id="origin"
+              name="origin"
+              value={formData.origin}
+              onChange={handleChange}
+              error={errors.origin}
+              placeholder="Via, numero civico, città"
+              required
+            />
+          </div>
 
-          <Input
-            id="destination"
-            name="destination"
-            label="Indirizzo di Destinazione"
-            value={formData.destination}
-            onChange={handleChange}
-            error={errors.destination}
-            placeholder="Via, numero civico, città"
-            required
-          />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Indirizzo di Destinazione
+            </label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {ITFV_OFFICES.map(office => (
+                <button
+                  key={office.id}
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, destination: office.address }))}
+                  className="text-xs px-3 py-1 rounded-full border border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                >
+                  {office.name}
+                </button>
+              ))}
+            </div>
+            <Input
+              id="destination"
+              name="destination"
+              value={formData.destination}
+              onChange={handleChange}
+              error={errors.destination}
+              placeholder="Via, numero civico, città"
+              required
+            />
+          </div>
 
           {/* Google Maps Distance Calculator */}
           <div className="bg-green-50 p-4 rounded-lg border border-green-100">

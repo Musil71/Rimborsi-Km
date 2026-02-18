@@ -9,6 +9,7 @@ import AutocompleteInput from '../components/AutocompleteInput';
 import { useAppContext } from '../context/AppContext';
 import { calculateDistance } from '../utils/distanceCalculator';
 import { Trip, Role, TripMeal, ExpenseType, EXPENSE_TYPE_LABELS } from '../types';
+import { ITFV_OFFICES, DEFAULT_OFFICE } from '../utils/itfvOffices';
 
 interface MealEntry {
   mealType: 'pranzo' | 'cena';
@@ -23,8 +24,6 @@ interface TravelExpenseEntry {
   amount: string;
 }
 
-const DEFAULT_ORIGIN = 'Via della Quercia 2/B, 31100 Treviso';
-
 interface FormData {
   date: string;
   personId: string;
@@ -37,6 +36,7 @@ interface FormData {
   isRoundTrip: boolean;
   savedRouteId: string;
   selectedDistanceId: string;
+  selectedOfficeId: string;
   useCustomOrigin: boolean;
   useCustomDestination: boolean;
   hasToll: boolean;
@@ -90,13 +90,14 @@ const TripForm: React.FC = () => {
     personId: '',
     vehicleId: '',
     tripRole: 'docente',
-    origin: DEFAULT_ORIGIN,
+    origin: DEFAULT_OFFICE.address,
     destination: '',
     distance: '',
     purpose: '',
     isRoundTrip: false,
     savedRouteId: '',
     selectedDistanceId: '',
+    selectedOfficeId: DEFAULT_OFFICE.id,
     useCustomOrigin: false,
     useCustomDestination: false,
     hasToll: false,
@@ -124,7 +125,8 @@ const TripForm: React.FC = () => {
     if (trip) {
       const savedRoute = trip.savedRouteId ? getSavedRoute(trip.savedRouteId) : null;
       const person = getPerson(trip.personId);
-      const personHomeAddress = person?.homeAddress || DEFAULT_ORIGIN;
+      const matchedOffice = ITFV_OFFICES.find(o => o.address === trip.origin);
+      const personHomeAddress = person?.homeAddress || DEFAULT_OFFICE.address;
 
       // Update available vehicles and roles first
       if (trip.personId) {
@@ -150,7 +152,8 @@ const TripForm: React.FC = () => {
         isRoundTrip: trip.isRoundTrip,
         savedRouteId: trip.savedRouteId || '',
         selectedDistanceId: trip.selectedDistanceId || '',
-        useCustomOrigin: trip.origin !== personHomeAddress,
+        selectedOfficeId: matchedOffice ? matchedOffice.id : DEFAULT_OFFICE.id,
+        useCustomOrigin: !matchedOffice && trip.origin !== personHomeAddress,
         useCustomDestination: !savedRoute,
         hasToll: trip.hasToll || false,
         tollEntryStation: trip.tollEntryStation || '',
@@ -480,7 +483,7 @@ const TripForm: React.FC = () => {
         setFormData(prev => ({
           ...prev,
           personId: value,
-          origin: person.homeAddress || DEFAULT_ORIGIN
+          origin: person.homeAddress || DEFAULT_OFFICE.address
         }));
         return;
       }
@@ -490,7 +493,8 @@ const TripForm: React.FC = () => {
       const checked = (e.target as HTMLInputElement).checked;
       if (name === 'useCustomOrigin' && !checked) {
         const person = formData.personId ? getPerson(formData.personId) : null;
-        const defaultOrigin = person?.homeAddress || DEFAULT_ORIGIN;
+        const office = ITFV_OFFICES.find(o => o.id === formData.selectedOfficeId) || DEFAULT_OFFICE;
+        const defaultOrigin = person?.homeAddress || office.address;
         setFormData(prev => ({
           ...prev,
           [name]: checked,
@@ -509,6 +513,13 @@ const TripForm: React.FC = () => {
       } else {
         setFormData(prev => ({ ...prev, [name]: checked }));
       }
+    } else if (name === 'selectedOfficeId') {
+      const office = ITFV_OFFICES.find(o => o.id === value) || DEFAULT_OFFICE;
+      setFormData(prev => ({
+        ...prev,
+        selectedOfficeId: value,
+        origin: office.address,
+      }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -797,10 +808,30 @@ const TripForm: React.FC = () => {
           </div>
 
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
-            <div className="flex items-center mb-2">
+            <div className="flex items-center mb-3">
               <Home className="h-5 w-5 text-blue-500 mr-2" />
-              <span className="font-medium text-blue-800">Indirizzo di Partenza</span>
+              <span className="font-medium text-blue-800">Sede di Partenza</span>
             </div>
+            {!formData.useCustomOrigin && (
+              <div className="mb-3 space-y-2">
+                {ITFV_OFFICES.map(office => (
+                  <label key={office.id} className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="selectedOfficeId"
+                      value={office.id}
+                      checked={formData.selectedOfficeId === office.id}
+                      onChange={handleChange}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="text-sm text-blue-800">
+                      <span className="font-medium">{office.name}</span>
+                      <span className="text-blue-600 ml-1">— {office.address}</span>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
             <div className="flex items-center mb-3">
               <input
                 id="useCustomOrigin"
@@ -814,7 +845,7 @@ const TripForm: React.FC = () => {
                 Usa un indirizzo di partenza personalizzato
               </label>
             </div>
-            {formData.useCustomOrigin ? (
+            {formData.useCustomOrigin && (
               <Input
                 id="origin"
                 name="origin"
@@ -824,12 +855,6 @@ const TripForm: React.FC = () => {
                 placeholder="Inserisci l'indirizzo di partenza"
                 required
               />
-            ) : (
-              <p className="text-sm text-blue-600">
-                {formData.personId
-                  ? getPerson(formData.personId)?.homeAddress || DEFAULT_ORIGIN
-                  : DEFAULT_ORIGIN}
-              </p>
             )}
           </div>
 
