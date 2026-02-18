@@ -124,6 +124,15 @@ export interface TollBooth {
   updatedAt: string;
 }
 
+export interface FavoriteDestination {
+  id: string;
+  name: string;
+  address: string;
+  defaultDistance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppState {
   people: Person[];
   vehicles: Vehicle[];
@@ -132,6 +141,7 @@ export interface AppState {
   tollBooths: TollBooth[];
   tripExpenses: TripExpense[];
   accommodations: Accommodation[];
+  favoriteDestinations: FavoriteDestination[];
 }
 
 export interface UserProfile {

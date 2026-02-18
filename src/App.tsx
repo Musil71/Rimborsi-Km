@@ -16,6 +16,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ExpensesPage from './pages/ExpensesPage';
 import AccommodationsPage from './pages/AccommodationsPage';
+import FavoriteDestinationsPage from './pages/FavoriteDestinationsPage';
 
 function App() {
   return (
@@ -51,6 +52,9 @@ function App() {
 
         {/* Alloggi routes */}
         <Route path="alloggi" element={<AccommodationsPage />} />
+
+        {/* Destinazioni abituali */}
+        <Route path="destinazioni-abituali" element={<FavoriteDestinationsPage />} />
       </Route>
     </Routes>
   );

@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   AppState, Person, Vehicle, Trip, SavedRoute, MonthlyReport,
-  RouteDistance, TollBooth, TripExpense, Accommodation, TripMeal
+  RouteDistance, TollBooth, TripExpense, Accommodation, TripMeal, FavoriteDestination
 } from '../types';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -30,6 +30,9 @@ interface AppContextType {
   addAccommodation: (accommodation: Omit<Accommodation, 'id' | 'createdAt'>) => Promise<void>;
   updateAccommodation: (accommodation: Accommodation) => Promise<void>;
   deleteAccommodation: (id: string) => Promise<void>;
+  addFavoriteDestination: (dest: Omit<FavoriteDestination, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  updateFavoriteDestination: (dest: FavoriteDestination) => Promise<void>;
+  deleteFavoriteDestination: (id: string) => Promise<void>;
   generateMonthlyReport: (personId: string, month: number, year: number) => MonthlyReport | null;
   getPerson: (id: string) => Person | undefined;
   getVehicle: (id: string) => Vehicle | undefined;
@@ -53,7 +56,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     savedRoutes: [],
     tollBooths: [],
     tripExpenses: [],
-    accommodations: []
+    accommodations: [],
+    favoriteDestinations: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -67,7 +71,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       const [
         peopleRes, vehiclesRes, tripsRes, routesRes, distancesRes,
-        tollBoothsRes, tripMealsRes, expensesRes, accommodationsRes
+        tollBoothsRes, tripMealsRes, expensesRes, accommodationsRes, favDestRes
       ] = await Promise.all([
         supabase.from('people').select('*').order('created_at', { ascending: false }),
         supabase.from('vehicles').select('*').order('created_at', { ascending: false }),
@@ -77,7 +81,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         supabase.from('toll_booths').select('*').order('usage_count', { ascending: false }),
         supabase.from('trip_meals').select('*'),
         supabase.from('trip_expenses').select('*').order('date', { ascending: false }),
-        supabase.from('accommodations').select('*').order('date_from', { ascending: false })
+        supabase.from('accommodations').select('*').order('date_from', { ascending: false }),
+        supabase.from('favorite_destinations').select('*').order('name', { ascending: true })
       ]);
 
       const people: Person[] = (peopleRes.data || []).map(p => ({
@@ -195,7 +200,16 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         createdAt: a.created_at
       }));
 
-      setState({ people, vehicles, trips, savedRoutes, tollBooths, tripExpenses, accommodations });
+      const favoriteDestinations: FavoriteDestination[] = (favDestRes.data || []).map(d => ({
+        id: d.id,
+        name: d.name,
+        address: d.address,
+        defaultDistance: parseFloat(d.default_distance),
+        createdAt: d.created_at,
+        updatedAt: d.updated_at
+      }));
+
+      setState({ people, vehicles, trips, savedRoutes, tollBooths, tripExpenses, accommodations, favoriteDestinations });
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -761,6 +775,54 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
+  const addFavoriteDestination = async (dest: Omit<FavoriteDestination, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const { data, error } = await supabase
+      .from('favorite_destinations')
+      .insert([{ name: dest.name, address: dest.address, default_distance: dest.defaultDistance }])
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    setState(prev => ({
+      ...prev,
+      favoriteDestinations: [...prev.favoriteDestinations, {
+        id: data.id,
+        name: data.name,
+        address: data.address,
+        defaultDistance: parseFloat(data.default_distance),
+        createdAt: data.created_at,
+        updatedAt: data.updated_at
+      }].sort((a, b) => a.name.localeCompare(b.name))
+    }));
+  };
+
+  const updateFavoriteDestination = async (dest: FavoriteDestination) => {
+    const { error } = await supabase
+      .from('favorite_destinations')
+      .update({ name: dest.name, address: dest.address, default_distance: dest.defaultDistance, updated_at: new Date().toISOString() })
+      .eq('id', dest.id);
+
+    if (error) throw error;
+
+    setState(prev => ({
+      ...prev,
+      favoriteDestinations: prev.favoriteDestinations
+        .map(d => d.id === dest.id ? dest : d)
+        .sort((a, b) => a.name.localeCompare(b.name))
+    }));
+  };
+
+  const deleteFavoriteDestination = async (id: string) => {
+    const { error } = await supabase.from('favorite_destinations').delete().eq('id', id);
+    if (error) throw error;
+
+    setState(prev => ({
+      ...prev,
+      favoriteDestinations: prev.favoriteDestinations.filter(d => d.id !== id)
+    }));
+  };
+
   const getPerson = (id: string) => state.people.find(p => p.id === id);
   const getVehicle = (id: string) => state.vehicles.find(v => v.id === id);
   const getVehiclesForPerson = (personId: string) => state.vehicles.filter(v => v.personId === personId);
@@ -908,6 +970,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addRouteDistance, updateRouteDistance, deleteRouteDistance,
     addTripExpense, updateTripExpense, deleteTripExpense,
     addAccommodation, updateAccommodation, deleteAccommodation,
+    addFavoriteDestination, updateFavoriteDestination, deleteFavoriteDestination,
     generateMonthlyReport,
     getPerson, getVehicle, getVehiclesForPerson,
     getSavedRoute, getRouteDistance,

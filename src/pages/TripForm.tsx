@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy, Plus, Trash2, Utensils, Receipt } from 'lucide-react';
+import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy, Plus, Trash2, Utensils, Receipt, Star } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -859,11 +859,53 @@ const TripForm: React.FC = () => {
           </div>
 
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
-            <div className="flex items-center mb-2">
+            <div className="flex items-center mb-3">
               <MapPin className="h-5 w-5 text-blue-500 mr-2" />
               <span className="font-medium text-blue-800">Indirizzo di Destinazione</span>
             </div>
-            
+
+            {state.favoriteDestinations.length > 0 && (
+              <div className="mb-4">
+                <div className="flex items-center mb-2">
+                  <Star className="h-4 w-4 text-amber-500 mr-1.5" />
+                  <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">Destinazioni abituali</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {state.favoriteDestinations.map(dest => {
+                    const isSelected = formData.destination === dest.address && formData.useCustomDestination;
+                    return (
+                      <button
+                        key={dest.id}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({
+                            ...prev,
+                            destination: dest.address,
+                            distance: String(dest.defaultDistance),
+                            useCustomDestination: true,
+                            savedRouteId: '',
+                            selectedDistanceId: '',
+                          }));
+                          if (errors.destination) setErrors(prev => ({ ...prev, destination: undefined }));
+                        }}
+                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 ${
+                          isSelected
+                            ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                            : 'bg-white border-amber-200 text-amber-800 hover:bg-amber-50 hover:border-amber-400'
+                        }`}
+                        title={dest.address}
+                      >
+                        <span>{dest.name}</span>
+                        <span className={`ml-1.5 text-xs ${isSelected ? 'text-amber-100' : 'text-amber-500'}`}>
+                          {dest.defaultDistance} km
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-3">
               <div className="flex items-center mb-4">
                 <input
@@ -894,9 +936,9 @@ const TripForm: React.FC = () => {
                   id="savedRouteId"
                   name="savedRouteId"
                   label="Seleziona un percorso salvato"
-                  options={state.savedRoutes.map(r => ({ 
-                    value: r.id, 
-                    label: `${r.name} (${r.destination})` 
+                  options={state.savedRoutes.map(r => ({
+                    value: r.id,
+                    label: `${r.name} (${r.destination})`
                   }))}
                   value={formData.savedRouteId}
                   onChange={handleSavedRouteChange}
