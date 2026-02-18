@@ -8,6 +8,7 @@ import Select from '../components/Select';
 import Table from '../components/Table';
 import { useAppContext } from '../context/AppContext';
 import { Trip, MonthlyReport, EXPENSE_TYPE_LABELS } from '../types';
+import { COMPANY_INFO } from '../utils/itfvOffices';
 
 const ReportsPage: React.FC = () => {
   const { state, generateMonthlyReport, getPerson, getVehicle, formatDate } = useAppContext();
@@ -138,28 +139,41 @@ const ReportsPage: React.FC = () => {
     const periodLabel = `${monthName} ${report.year}`;
     const personLabel = `${person.name} ${person.surname}`;
 
-    const primaryColor: [number, number, number] = [13, 148, 136];
-    const primaryDark: [number, number, number] = [15, 118, 110];
-    const lightGray: [number, number, number] = [248, 248, 248];
+    const black: [number, number, number] = [0, 0, 0];
     const darkGray: [number, number, number] = [50, 50, 50];
+    const medGray: [number, number, number] = [120, 120, 120];
+    const lightGray: [number, number, number] = [240, 240, 240];
+    const white: [number, number, number] = [255, 255, 255];
 
-    doc.setFillColor(...primaryColor);
-    doc.rect(0, 0, 210, 28, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(16);
+    doc.setDrawColor(...medGray);
+    doc.setLineWidth(0.3);
+    doc.line(14, 8, 196, 8);
+
+    doc.setFontSize(15);
     doc.setFont('helvetica', 'bold');
-    doc.text('NOTA SPESE DI TRASFERTA', 14, 12);
-    doc.setFontSize(10);
+    doc.setTextColor(...black);
+    doc.text('NOTA SPESE DI TRASFERTA', 14, 16);
+
+    doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...darkGray);
     doc.text(`${personLabel}  |  ${periodLabel}`, 14, 22);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('ITFV', 196, 12, { align: 'right' });
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Istituto Veneto di Terapia Familiare', 196, 20, { align: 'right' });
 
-    let y = 36;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...black);
+    doc.text(COMPANY_INFO.ragioneSociale, 196, 12, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...darkGray);
+    doc.setFontSize(7.5);
+    doc.text(`P.IVA / C.F.: ${COMPANY_INFO.partitaIva}`, 196, 17, { align: 'right' });
+    doc.text(`REA: ${COMPANY_INFO.rea}`, 196, 22, { align: 'right' });
+
+    doc.setDrawColor(...medGray);
+    doc.setLineWidth(0.3);
+    doc.line(14, 26, 196, 26);
+
+    let y = 34;
 
     const totalGeneral = report.totalReimbursement + report.totalTollFees + report.totalMealReimbursement + report.totalExpenses + report.totalAccommodations;
 
@@ -175,8 +189,9 @@ const ReportsPage: React.FC = () => {
       ],
       foot: [['TOTALE RIMBORSO SPESE', `${totalGeneral.toFixed(2)} €`]],
       theme: 'grid',
-      headStyles: { fillColor: primaryColor, textColor: 255, fontStyle: 'bold' },
-      footStyles: { fillColor: darkGray, textColor: 255, fontStyle: 'bold', fontSize: 11 },
+      headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', lineColor: medGray },
+      footStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 10, lineColor: medGray },
+      bodyStyles: { textColor: darkGray, lineColor: lightGray },
       columnStyles: { 1: { halign: 'right', fontStyle: 'bold' } },
       margin: { left: 14, right: 14 }
     });
@@ -184,7 +199,7 @@ const ReportsPage: React.FC = () => {
     y = (doc as any).lastAutoTable.finalY + 10;
 
     if (report.trips.length > 0) {
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...darkGray);
       doc.text('Rimborsi Chilometrici', 14, y);
@@ -212,9 +227,10 @@ const ReportsPage: React.FC = () => {
         startY: y,
         head: [['Data', 'Percorso', 'Targa', 'Km', 'Rimborso', 'Pedaggio', 'Vitto', 'Motivo']],
         body: tripRows,
-        theme: 'striped',
-        headStyles: { fillColor: primaryDark, textColor: 255, fontSize: 8 },
-        bodyStyles: { fontSize: 7.5 },
+        theme: 'grid',
+        headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 8, lineColor: medGray },
+        bodyStyles: { fontSize: 7.5, textColor: darkGray, lineColor: lightGray },
+        alternateRowStyles: { fillColor: white },
         columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 42 }, 2: { cellWidth: 18 }, 3: { cellWidth: 16 }, 4: { cellWidth: 18 }, 5: { cellWidth: 18 }, 6: { cellWidth: 22 } },
         margin: { left: 14, right: 14 }
       });
@@ -225,7 +241,7 @@ const ReportsPage: React.FC = () => {
     if (report.expenses.length > 0) {
       if (y > 240) { doc.addPage(); y = 20; }
 
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...darkGray);
       doc.text('Spese di Viaggio e Trasferimento', 14, y);
@@ -241,9 +257,11 @@ const ReportsPage: React.FC = () => {
           `${e.amount.toFixed(2)} €`
         ]),
         foot: [['', '', 'TOTALE', `${report.totalExpenses.toFixed(2)} €`]],
-        theme: 'striped',
-        headStyles: { fillColor: primaryDark, textColor: 255, fontSize: 9 },
-        footStyles: { fontStyle: 'bold', fillColor: lightGray },
+        theme: 'grid',
+        headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 9, lineColor: medGray },
+        bodyStyles: { textColor: darkGray, lineColor: lightGray },
+        footStyles: { fontStyle: 'bold', fillColor: lightGray, textColor: black, lineColor: medGray },
+        alternateRowStyles: { fillColor: white },
         columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
         margin: { left: 14, right: 14 }
       });
@@ -254,7 +272,7 @@ const ReportsPage: React.FC = () => {
     if (report.accommodations.length > 0) {
       if (y > 240) { doc.addPage(); y = 20; }
 
-      doc.setFontSize(12);
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...darkGray);
       doc.text('Alloggi', 14, y);
@@ -269,9 +287,11 @@ const ReportsPage: React.FC = () => {
           `${a.amount.toFixed(2)} €`
         ]),
         foot: [['', 'TOTALE', `${report.totalAccommodations.toFixed(2)} €`]],
-        theme: 'striped',
-        headStyles: { fillColor: primaryDark, textColor: 255, fontSize: 9 },
-        footStyles: { fontStyle: 'bold', fillColor: lightGray },
+        theme: 'grid',
+        headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 9, lineColor: medGray },
+        bodyStyles: { textColor: darkGray, lineColor: lightGray },
+        footStyles: { fontStyle: 'bold', fillColor: lightGray, textColor: black, lineColor: medGray },
+        alternateRowStyles: { fillColor: white },
         columnStyles: { 2: { halign: 'right', fontStyle: 'bold' } },
         margin: { left: 14, right: 14 }
       });
@@ -281,26 +301,27 @@ const ReportsPage: React.FC = () => {
 
     if (y > 230) { doc.addPage(); y = 20; }
 
-    doc.setDrawColor(...primaryColor);
-    doc.setLineWidth(0.5);
+    doc.setDrawColor(...medGray);
+    doc.setLineWidth(0.3);
     doc.line(14, y, 196, y);
     y += 8;
 
-    doc.setFontSize(13);
+    doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryColor);
+    doc.setTextColor(...black);
     doc.text('TOTALE RIMBORSO SPESE:', 14, y);
     doc.text(`${totalGeneral.toFixed(2)} €`, 196, y, { align: 'right' });
     y += 16;
 
-    doc.setFontSize(9);
+    doc.setFontSize(8.5);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(120, 120, 120);
+    doc.setTextColor(...medGray);
     doc.text('Firmare e allegare tutta la relativa documentazione (ricevute, scontrini, biglietti, ecc.)', 14, y);
     y += 12;
 
     doc.setTextColor(...darkGray);
     doc.text('Firma:', 14, y);
+    doc.setDrawColor(...medGray);
     doc.line(40, y, 100, y);
     doc.text('Data:', 120, y);
     doc.line(135, y, 196, y);
@@ -308,9 +329,14 @@ const ReportsPage: React.FC = () => {
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
       doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150, 150, 150);
-      doc.text(`${personLabel} - ${periodLabel} - Pagina ${i} di ${pageCount}`, 105, 292, { align: 'center' });
+      doc.setDrawColor(...lightGray);
+      doc.setLineWidth(0.3);
+      doc.line(14, 287, 196, 287);
+      doc.setFontSize(7);
+      doc.setTextColor(...medGray);
+      doc.text(`${personLabel} - ${periodLabel}`, 14, 291);
+      doc.text(`P.IVA ${COMPANY_INFO.partitaIva}`, 105, 291, { align: 'center' });
+      doc.text(`Pagina ${i} di ${pageCount}`, 196, 291, { align: 'right' });
     }
 
     doc.save(`nota-spese_${person.surname.toLowerCase()}_${monthName.toLowerCase()}-${report.year}.pdf`);

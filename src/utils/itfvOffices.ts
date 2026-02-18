@@ -23,3 +23,10 @@ export const ITFV_OFFICES: ItfvOffice[] = [
 ];
 
 export const DEFAULT_OFFICE = ITFV_OFFICES[0];
+
+export const COMPANY_INFO = {
+  ragioneSociale: 'ISTITUTO VENETO DI TERAPIA FAMILIARE S.R.L.',
+  partitaIva: '02034280269',
+  codiceFiscale: '02034280269',
+  rea: '184910',
+};
