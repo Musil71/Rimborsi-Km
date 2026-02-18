@@ -154,10 +154,19 @@ const ReportsPage: React.FC = () => {
     doc.setTextColor(...black);
     doc.text('NOTA SPESE DI TRASFERTA', 14, 16);
 
+    const roleLabels: Record<string, string> = {
+      docente: 'Docente',
+      amministratore: 'Amministratore',
+      dipendente: 'Dipendente',
+    };
+    const roleLabel = selectedTripRole !== 'all' ? roleLabels[selectedTripRole] : null;
+    const subtitleParts = [personLabel, periodLabel];
+    if (roleLabel) subtitleParts.push(roleLabel);
+
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...darkGray);
-    doc.text(`${personLabel}  |  ${periodLabel}`, 14, 22);
+    doc.text(subtitleParts.join('  |  '), 14, 22);
 
     doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
@@ -213,25 +222,27 @@ const ReportsPage: React.FC = () => {
           ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount).toFixed(2) + ' €' : '-';
         const mealTotal = getMealsTotal(trip);
         const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
+        const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
         return [
           new Date(trip.date).toLocaleDateString('it-IT'),
           `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
           vehicle ? vehicle.plate : '-',
           `${dist.toFixed(1)} km`,
           kmReimb, toll, meal,
+          tripRole,
           trip.purpose || '-'
         ];
       });
 
       autoTable(doc, {
         startY: y,
-        head: [['Data', 'Percorso', 'Targa', 'Km', 'Rimborso', 'Pedaggio', 'Vitto', 'Motivo']],
+        head: [['Data', 'Percorso', 'Targa', 'Km', 'Rimborso', 'Pedaggio', 'Vitto', 'Ruolo', 'Motivo']],
         body: tripRows,
         theme: 'grid',
         headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 8, lineColor: medGray },
         bodyStyles: { fontSize: 7.5, textColor: darkGray, lineColor: lightGray },
         alternateRowStyles: { fillColor: white },
-        columnStyles: { 0: { cellWidth: 18 }, 1: { cellWidth: 42 }, 2: { cellWidth: 18 }, 3: { cellWidth: 16 }, 4: { cellWidth: 18 }, 5: { cellWidth: 18 }, 6: { cellWidth: 22 } },
+        columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 38 }, 2: { cellWidth: 14 }, 3: { cellWidth: 14 }, 4: { cellWidth: 18 }, 5: { cellWidth: 16 }, 6: { cellWidth: 18 }, 7: { cellWidth: 22 } },
         margin: { left: 14, right: 14 }
       });
 
