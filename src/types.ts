@@ -98,9 +98,27 @@ export interface Accommodation {
   createdAt: string;
 }
 
+export type ReportPeriodType = 'mensile' | 'trimestrale' | 'semestrale' | 'personalizzato';
+
 export interface MonthlyReport {
   month: number;
   year: number;
+  personId: string;
+  trips: Trip[];
+  totalDistance: number;
+  totalReimbursement: number;
+  totalTollFees: number;
+  totalMealReimbursement: number;
+  expenses: TripExpense[];
+  totalExpenses: number;
+  accommodations: Accommodation[];
+  totalAccommodations: number;
+}
+
+export interface PeriodReport {
+  dateFrom: Date;
+  dateTo: Date;
+  periodLabel: string;
   personId: string;
   trips: Trip[];
   totalDistance: number;

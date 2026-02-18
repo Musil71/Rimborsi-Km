@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
-  AppState, Person, Vehicle, Trip, SavedRoute, MonthlyReport,
+  AppState, Person, Vehicle, Trip, SavedRoute, MonthlyReport, PeriodReport,
   RouteDistance, TollBooth, TripExpense, Accommodation, TripMeal, FavoriteDestination
 } from '../types';
 import { format } from 'date-fns';
@@ -34,6 +34,7 @@ interface AppContextType {
   updateFavoriteDestination: (dest: FavoriteDestination) => Promise<void>;
   deleteFavoriteDestination: (id: string) => Promise<void>;
   generateMonthlyReport: (personId: string, month: number, year: number) => MonthlyReport | null;
+  generatePeriodReport: (personId: string, dateFrom: Date, dateTo: Date, periodLabel: string) => PeriodReport | null;
   getPerson: (id: string) => Person | undefined;
   getVehicle: (id: string) => Vehicle | undefined;
   getVehiclesForPerson: (personId: string) => Vehicle[];
@@ -823,6 +824,69 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
+  const generatePeriodReport = (personId: string, dateFrom: Date, dateTo: Date, periodLabel: string): PeriodReport | null => {
+    const person = state.people.find(p => p.id === personId);
+    if (!person) return null;
+
+    const startDate = new Date(dateFrom);
+    startDate.setHours(0, 0, 0, 0);
+    const endDate = new Date(dateTo);
+    endDate.setHours(23, 59, 59, 999);
+
+    const inRange = (dateStr: string) => {
+      const d = new Date(dateStr);
+      return d >= startDate && d <= endDate;
+    };
+
+    const personTrips = state.trips.filter(t => t.personId === personId && inRange(t.date));
+    const personExpenses = state.tripExpenses.filter(e => e.personId === personId && inRange(e.date));
+    const personAccommodations = state.accommodations.filter(a => {
+      const from = new Date(a.dateFrom);
+      const to = new Date(a.dateTo);
+      return a.personId === personId && from <= endDate && to >= startDate;
+    });
+
+    let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
+
+    personTrips.forEach(trip => {
+      const vehicle = state.vehicles.find(v => v.id === trip.vehicleId);
+      if (vehicle) {
+        const tripDistance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+        totalDistance += tripDistance;
+        totalReimbursement += tripDistance * vehicle.reimbursementRate;
+      }
+      if (trip.hasToll && trip.tollAmount) {
+        totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+      }
+      if (trip.isRoundTrip && trip.returnTollAmount) {
+        totalTollFees += trip.returnTollAmount;
+      }
+      if (trip.meals && trip.meals.length > 0) {
+        trip.meals.forEach(m => { totalMealReimbursement += m.amount; });
+      } else if (trip.hasMeal && trip.mealAmount) {
+        totalMealReimbursement += trip.mealAmount;
+      }
+    });
+
+    const totalExpenses = personExpenses.reduce((sum, e) => sum + e.amount, 0);
+    const totalAccommodations = personAccommodations.reduce((sum, a) => sum + a.amount, 0);
+
+    if (personTrips.length === 0 && personExpenses.length === 0 && personAccommodations.length === 0) {
+      return null;
+    }
+
+    return {
+      dateFrom: startDate,
+      dateTo: endDate,
+      periodLabel,
+      personId,
+      trips: personTrips,
+      totalDistance, totalReimbursement, totalTollFees, totalMealReimbursement,
+      expenses: personExpenses, totalExpenses,
+      accommodations: personAccommodations, totalAccommodations
+    };
+  };
+
   const getPerson = (id: string) => state.people.find(p => p.id === id);
   const getVehicle = (id: string) => state.vehicles.find(v => v.id === id);
   const getVehiclesForPerson = (personId: string) => state.vehicles.filter(v => v.personId === personId);
@@ -971,7 +1035,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addTripExpense, updateTripExpense, deleteTripExpense,
     addAccommodation, updateAccommodation, deleteAccommodation,
     addFavoriteDestination, updateFavoriteDestination, deleteFavoriteDestination,
-    generateMonthlyReport,
+    generateMonthlyReport, generatePeriodReport,
     getPerson, getVehicle, getVehiclesForPerson,
     getSavedRoute, getRouteDistance,
     getTollBooth, searchTollStations, handleTollBoothOnTripSave,

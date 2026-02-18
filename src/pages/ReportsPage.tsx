@@ -1,22 +1,39 @@
 import React, { useState } from 'react';
-import { FileText, Calendar, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils } from 'lucide-react';
+import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Select from '../components/Select';
+import Input from '../components/Input';
 import Table from '../components/Table';
 import { useAppContext } from '../context/AppContext';
-import { Trip, MonthlyReport, EXPENSE_TYPE_LABELS } from '../types';
+import { Trip, MonthlyReport, PeriodReport, ReportPeriodType, EXPENSE_TYPE_LABELS } from '../types';
 import { COMPANY_INFO } from '../utils/itfvOffices';
 
+const MONTH_NAMES_IT = [
+  'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+  'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'
+];
+
+type AnyReport = MonthlyReport | PeriodReport;
+
+function isPeriodReport(r: AnyReport): r is PeriodReport {
+  return 'dateFrom' in r && r.dateFrom instanceof Date;
+}
+
 const ReportsPage: React.FC = () => {
-  const { state, generateMonthlyReport, getPerson, getVehicle, formatDate } = useAppContext();
+  const { state, generateMonthlyReport, generatePeriodReport, getPerson, getVehicle, formatDate } = useAppContext();
 
   const [selectedPerson, setSelectedPerson] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
-  const [report, setReport] = useState<MonthlyReport | null>(null);
+  const [periodType, setPeriodType] = useState<ReportPeriodType>('mensile');
+  const [selectedQuarter, setSelectedQuarter] = useState('1');
+  const [selectedSemester, setSelectedSemester] = useState('1');
+  const [customDateFrom, setCustomDateFrom] = useState('');
+  const [customDateTo, setCustomDateTo] = useState('');
+  const [report, setReport] = useState<AnyReport | null>(null);
   const [filterDocenti, setFilterDocenti] = useState(true);
   const [filterAmministratori, setFilterAmministratori] = useState(true);
   const [filterDipendenti, setFilterDipendenti] = useState(true);
@@ -26,14 +43,26 @@ const ReportsPage: React.FC = () => {
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i.toString(),
-    label: new Date(0, i).toLocaleString('it-IT', { month: 'long' }),
+    label: MONTH_NAMES_IT[i],
   }));
 
   const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 3 }, (_, i) => ({
+  const yearOptions = Array.from({ length: 5 }, (_, i) => ({
     value: (currentYear - i).toString(),
     label: (currentYear - i).toString(),
   }));
+
+  const quarterOptions = [
+    { value: '1', label: '1° Trimestre (Gen – Mar)' },
+    { value: '2', label: '2° Trimestre (Apr – Giu)' },
+    { value: '3', label: '3° Trimestre (Lug – Set)' },
+    { value: '4', label: '4° Trimestre (Ott – Dic)' },
+  ];
+
+  const semesterOptions = [
+    { value: '1', label: '1° Semestre (Gen – Giu)' },
+    { value: '2', label: '2° Semestre (Lug – Dic)' },
+  ];
 
   const filteredPeople = state.people.filter(person => {
     if (!filterDocenti && !filterAmministratori && !filterDipendenti) return true;
@@ -44,61 +73,141 @@ const ReportsPage: React.FC = () => {
     );
   });
 
+  const getQuarterRange = (quarter: number, year: number): { dateFrom: Date; dateTo: Date; label: string } => {
+    const starts = [0, 3, 6, 9];
+    const ends = [2, 5, 8, 11];
+    const startMonth = starts[quarter - 1];
+    const endMonth = ends[quarter - 1];
+    return {
+      dateFrom: new Date(year, startMonth, 1),
+      dateTo: new Date(year, endMonth + 1, 0),
+      label: `${quarter}° Trimestre ${year} (${MONTH_NAMES_IT[startMonth]} – ${MONTH_NAMES_IT[endMonth]})`
+    };
+  };
+
+  const getSemesterRange = (semester: number, year: number): { dateFrom: Date; dateTo: Date; label: string } => {
+    if (semester === 1) {
+      return {
+        dateFrom: new Date(year, 0, 1),
+        dateTo: new Date(year, 5, 30),
+        label: `1° Semestre ${year} (Gennaio – Giugno)`
+      };
+    }
+    return {
+      dateFrom: new Date(year, 6, 1),
+      dateTo: new Date(year, 11, 31),
+      label: `2° Semestre ${year} (Luglio – Dicembre)`
+    };
+  };
+
+  const applyTripRoleFilter = (reportData: AnyReport, role: string): AnyReport => {
+    if (role === 'all') return reportData;
+
+    const filteredTrips = reportData.trips.filter(t => t.tripRole === role);
+    let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
+    filteredTrips.forEach(trip => {
+      const vehicle = getVehicle(trip.vehicleId);
+      if (vehicle) {
+        const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+        totalDistance += d;
+        totalReimbursement += d * vehicle.reimbursementRate;
+      }
+      if (trip.hasToll && trip.tollAmount) {
+        totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+      }
+      if (trip.isRoundTrip && trip.returnTollAmount) {
+        totalTollFees += trip.returnTollAmount;
+      }
+      if (trip.meals && trip.meals.length > 0) {
+        trip.meals.forEach(m => { totalMealReimbursement += m.amount; });
+      } else if (trip.hasMeal && trip.mealAmount) {
+        totalMealReimbursement += trip.mealAmount;
+      }
+    });
+
+    return { ...reportData, trips: filteredTrips, totalDistance, totalReimbursement, totalTollFees, totalMealReimbursement };
+  };
+
   const handleGenerateReport = () => {
     if (!selectedPerson) return;
 
     setNoDataFound(false);
-    let reportData = generateMonthlyReport(
-      selectedPerson,
-      parseInt(selectedMonth),
-      parseInt(selectedYear)
-    );
+    const year = parseInt(selectedYear);
+    let rawReport: AnyReport | null = null;
 
-    if (!reportData) {
+    if (periodType === 'mensile') {
+      rawReport = generateMonthlyReport(selectedPerson, parseInt(selectedMonth), year);
+    } else if (periodType === 'trimestrale') {
+      const { dateFrom, dateTo, label } = getQuarterRange(parseInt(selectedQuarter), year);
+      rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
+    } else if (periodType === 'semestrale') {
+      const { dateFrom, dateTo, label } = getSemesterRange(parseInt(selectedSemester), year);
+      rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
+    } else if (periodType === 'personalizzato') {
+      if (!customDateFrom || !customDateTo) return;
+      const from = new Date(customDateFrom);
+      const to = new Date(customDateTo);
+      const label = `${from.toLocaleDateString('it-IT')} – ${to.toLocaleDateString('it-IT')}`;
+      rawReport = generatePeriodReport(selectedPerson, from, to, label);
+    }
+
+    if (!rawReport) {
       setReport(null);
       setNoDataFound(true);
       return;
     }
 
     const roleCounts: Record<string, number> = { docente: 0, amministratore: 0, dipendente: 0 };
-    reportData.trips.forEach((trip: Trip) => {
+    rawReport.trips.forEach((trip: Trip) => {
       if (trip.tripRole) roleCounts[trip.tripRole] = (roleCounts[trip.tripRole] || 0) + 1;
     });
     const rolesUsed = Object.entries(roleCounts).filter(([_, count]) => count > 0);
     setMultiRoleInfo({ hasMultipleRoles: rolesUsed.length > 1, roleCounts });
 
-    if (selectedTripRole !== 'all') {
-      const filteredTrips = reportData.trips.filter(t => t.tripRole === selectedTripRole);
+    const finalReport = applyTripRoleFilter(rawReport, selectedTripRole);
+    setReport(finalReport);
+  };
 
-      let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
-      filteredTrips.forEach(trip => {
-        const vehicle = getVehicle(trip.vehicleId);
-        if (vehicle) {
-          const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-          totalDistance += d;
-          totalReimbursement += d * vehicle.reimbursementRate;
-        }
-        if (trip.hasToll && trip.tollAmount) {
-          totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
-        }
-        if (trip.meals && trip.meals.length > 0) {
-          trip.meals.forEach(m => { totalMealReimbursement += m.amount; });
-        } else if (trip.hasMeal && trip.mealAmount) {
-          totalMealReimbursement += trip.mealAmount;
-        }
+  const getReportPeriodLabel = (r: AnyReport): string => {
+    if (isPeriodReport(r)) return r.periodLabel;
+    return `${MONTH_NAMES_IT[(r as MonthlyReport).month]} ${(r as MonthlyReport).year}`;
+  };
+
+  const getMonthsInRange = (dateFrom: Date, dateTo: Date): Array<{ month: number; year: number; label: string }> => {
+    const months: Array<{ month: number; year: number; label: string }> = [];
+    const current = new Date(dateFrom.getFullYear(), dateFrom.getMonth(), 1);
+    const end = new Date(dateTo.getFullYear(), dateTo.getMonth(), 1);
+    while (current <= end) {
+      months.push({
+        month: current.getMonth(),
+        year: current.getFullYear(),
+        label: `${MONTH_NAMES_IT[current.getMonth()]} ${current.getFullYear()}`
       });
-
-      reportData = {
-        ...reportData,
-        trips: filteredTrips,
-        totalDistance,
-        totalReimbursement,
-        totalTollFees,
-        totalMealReimbursement
-      };
+      current.setMonth(current.getMonth() + 1);
     }
+    return months;
+  };
 
-    setReport(reportData);
+  const getTripsByMonth = (trips: Trip[], dateFrom: Date, dateTo: Date) => {
+    const months = getMonthsInRange(dateFrom, dateTo);
+    return months.map(m => ({
+      ...m,
+      trips: trips.filter(t => {
+        const d = new Date(t.date);
+        return d.getMonth() === m.month && d.getFullYear() === m.year;
+      })
+    })).filter(m => m.trips.length > 0);
+  };
+
+  const getExpensesByMonth = (expenses: typeof report extends null ? never : AnyReport['expenses'], dateFrom: Date, dateTo: Date) => {
+    const months = getMonthsInRange(dateFrom, dateTo);
+    return months.map(m => ({
+      ...m,
+      expenses: (expenses as AnyReport['expenses']).filter(e => {
+        const d = new Date(e.date);
+        return d.getMonth() === m.month && d.getFullYear() === m.year;
+      })
+    })).filter(m => m.expenses.length > 0);
   };
 
   const getRoleBadge = (role?: string) => {
@@ -128,6 +237,13 @@ const ReportsPage: React.FC = () => {
     return '';
   };
 
+  const isMultiMonth = (): boolean => {
+    if (!report) return false;
+    if (!isPeriodReport(report)) return false;
+    const months = getMonthsInRange(report.dateFrom, report.dateTo);
+    return months.length > 1;
+  };
+
   const handleDownloadPDF = () => {
     if (!report) return;
 
@@ -135,8 +251,7 @@ const ReportsPage: React.FC = () => {
     if (!person) return;
 
     const doc = new jsPDF();
-    const monthName = new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' });
-    const periodLabel = `${monthName} ${report.year}`;
+    const periodLabel = getReportPeriodLabel(report);
     const personLabel = `${person.name} ${person.surname}`;
 
     const black: [number, number, number] = [0, 0, 0];
@@ -144,6 +259,13 @@ const ReportsPage: React.FC = () => {
     const medGray: [number, number, number] = [120, 120, 120];
     const lightGray: [number, number, number] = [240, 240, 240];
     const white: [number, number, number] = [255, 255, 255];
+    const sectionGray: [number, number, number] = [220, 220, 220];
+
+    const roleLabels: Record<string, string> = {
+      docente: 'Docente',
+      amministratore: 'Amministratore',
+      dipendente: 'Dipendente',
+    };
 
     doc.setDrawColor(...medGray);
     doc.setLineWidth(0.3);
@@ -154,11 +276,6 @@ const ReportsPage: React.FC = () => {
     doc.setTextColor(...black);
     doc.text('NOTA SPESE DI TRASFERTA', 14, 16);
 
-    const roleLabels: Record<string, string> = {
-      docente: 'Docente',
-      amministratore: 'Amministratore',
-      dipendente: 'Dipendente',
-    };
     const roleLabel = selectedTripRole !== 'all' ? roleLabels[selectedTripRole] : null;
     const subtitleParts = [personLabel, periodLabel];
     if (roleLabel) subtitleParts.push(roleLabel);
@@ -214,39 +331,92 @@ const ReportsPage: React.FC = () => {
       doc.text('Rimborsi Chilometrici', 14, y);
       y += 4;
 
-      const tripRows = report.trips.map(trip => {
-        const vehicle = getVehicle(trip.vehicleId);
-        const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-        const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
-        const toll = trip.hasToll && trip.tollAmount
-          ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount).toFixed(2) + ' €' : '-';
-        const mealTotal = getMealsTotal(trip);
-        const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
-        const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
-        return [
-          new Date(trip.date).toLocaleDateString('it-IT'),
-          `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
-          vehicle ? vehicle.plate : '-',
-          `${dist.toFixed(1)} km`,
-          kmReimb, toll, meal,
-          tripRole,
-          trip.purpose || '-'
-        ];
-      });
+      const multiMonth = isPeriodReport(report) && getMonthsInRange(report.dateFrom, report.dateTo).length > 1;
 
-      autoTable(doc, {
-        startY: y,
-        head: [['Data', 'Percorso', 'Targa', 'Km', 'Rimborso', 'Pedaggio', 'Vitto', 'Ruolo', 'Motivo']],
-        body: tripRows,
-        theme: 'grid',
-        headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 8, lineColor: medGray },
-        bodyStyles: { fontSize: 7.5, textColor: darkGray, lineColor: lightGray },
-        alternateRowStyles: { fillColor: white },
-        columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 38 }, 2: { cellWidth: 14 }, 3: { cellWidth: 14 }, 4: { cellWidth: 18 }, 5: { cellWidth: 16 }, 6: { cellWidth: 18 }, 7: { cellWidth: 22 } },
-        margin: { left: 14, right: 14 }
-      });
+      if (multiMonth && isPeriodReport(report)) {
+        const tripsByMonth = getTripsByMonth(report.trips, report.dateFrom, report.dateTo);
 
-      y = (doc as any).lastAutoTable.finalY + 10;
+        for (const monthGroup of tripsByMonth) {
+          if (y > 240) { doc.addPage(); y = 20; }
+
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...darkGray);
+          doc.setFillColor(...sectionGray);
+          doc.rect(14, y, 182, 6, 'F');
+          doc.text(monthGroup.label, 16, y + 4.2);
+          y += 8;
+
+          const tripRows = monthGroup.trips.map(trip => {
+            const vehicle = getVehicle(trip.vehicleId);
+            const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+            const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
+            const toll = trip.hasToll && trip.tollAmount
+              ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount).toFixed(2) + ' €' : '-';
+            const mealTotal = getMealsTotal(trip);
+            const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
+            const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
+            return [
+              new Date(trip.date).toLocaleDateString('it-IT'),
+              `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
+              vehicle ? vehicle.plate : '-',
+              `${dist.toFixed(1)} km`,
+              kmReimb, toll, meal,
+              tripRole,
+              trip.purpose || '-'
+            ];
+          });
+
+          autoTable(doc, {
+            startY: y,
+            head: [['Data', 'Percorso', 'Targa', 'Km', 'Rimborso', 'Pedaggio', 'Vitto', 'Ruolo', 'Motivo']],
+            body: tripRows,
+            theme: 'grid',
+            headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 8, lineColor: medGray },
+            bodyStyles: { fontSize: 7.5, textColor: darkGray, lineColor: lightGray },
+            alternateRowStyles: { fillColor: white },
+            columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 38 }, 2: { cellWidth: 14 }, 3: { cellWidth: 14 }, 4: { cellWidth: 18 }, 5: { cellWidth: 16 }, 6: { cellWidth: 18 }, 7: { cellWidth: 22 } },
+            margin: { left: 14, right: 14 }
+          });
+
+          y = (doc as any).lastAutoTable.finalY + 6;
+        }
+        y += 4;
+      } else {
+        const tripRows = report.trips.map(trip => {
+          const vehicle = getVehicle(trip.vehicleId);
+          const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+          const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
+          const toll = trip.hasToll && trip.tollAmount
+            ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount).toFixed(2) + ' €' : '-';
+          const mealTotal = getMealsTotal(trip);
+          const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
+          const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
+          return [
+            new Date(trip.date).toLocaleDateString('it-IT'),
+            `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
+            vehicle ? vehicle.plate : '-',
+            `${dist.toFixed(1)} km`,
+            kmReimb, toll, meal,
+            tripRole,
+            trip.purpose || '-'
+          ];
+        });
+
+        autoTable(doc, {
+          startY: y,
+          head: [['Data', 'Percorso', 'Targa', 'Km', 'Rimborso', 'Pedaggio', 'Vitto', 'Ruolo', 'Motivo']],
+          body: tripRows,
+          theme: 'grid',
+          headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 8, lineColor: medGray },
+          bodyStyles: { fontSize: 7.5, textColor: darkGray, lineColor: lightGray },
+          alternateRowStyles: { fillColor: white },
+          columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 38 }, 2: { cellWidth: 14 }, 3: { cellWidth: 14 }, 4: { cellWidth: 18 }, 5: { cellWidth: 16 }, 6: { cellWidth: 18 }, 7: { cellWidth: 22 } },
+          margin: { left: 14, right: 14 }
+        });
+
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
     }
 
     if (report.expenses.length > 0) {
@@ -258,26 +428,70 @@ const ReportsPage: React.FC = () => {
       doc.text('Spese di Viaggio e Trasferimento', 14, y);
       y += 4;
 
-      autoTable(doc, {
-        startY: y,
-        head: [['Data', 'Tipo', 'Dettaglio', 'Importo']],
-        body: report.expenses.map(e => [
-          new Date(e.date).toLocaleDateString('it-IT'),
-          EXPENSE_TYPE_LABELS[e.expenseType],
-          (e.fromLocation && e.toLocation) ? `${e.fromLocation} -> ${e.toLocation}` : (e.description || '-'),
-          `${e.amount.toFixed(2)} €`
-        ]),
-        foot: [['', '', 'TOTALE', `${report.totalExpenses.toFixed(2)} €`]],
-        theme: 'grid',
-        headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 9, lineColor: medGray },
-        bodyStyles: { textColor: darkGray, lineColor: lightGray },
-        footStyles: { fontStyle: 'bold', fillColor: lightGray, textColor: black, lineColor: medGray },
-        alternateRowStyles: { fillColor: white },
-        columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
-        margin: { left: 14, right: 14 }
-      });
+      const multiMonth = isPeriodReport(report) && getMonthsInRange(report.dateFrom, report.dateTo).length > 1;
 
-      y = (doc as any).lastAutoTable.finalY + 10;
+      if (multiMonth && isPeriodReport(report)) {
+        const expensesByMonth = getExpensesByMonth(report.expenses, report.dateFrom, report.dateTo);
+
+        for (const monthGroup of expensesByMonth) {
+          if (y > 240) { doc.addPage(); y = 20; }
+
+          doc.setFontSize(9);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...darkGray);
+          doc.setFillColor(...sectionGray);
+          doc.rect(14, y, 182, 6, 'F');
+          doc.text(monthGroup.label, 16, y + 4.2);
+          y += 8;
+
+          autoTable(doc, {
+            startY: y,
+            head: [['Data', 'Tipo', 'Dettaglio', 'Importo']],
+            body: monthGroup.expenses.map(e => [
+              new Date(e.date).toLocaleDateString('it-IT'),
+              EXPENSE_TYPE_LABELS[e.expenseType],
+              (e.fromLocation && e.toLocation) ? `${e.fromLocation} -> ${e.toLocation}` : (e.description || '-'),
+              `${e.amount.toFixed(2)} €`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 9, lineColor: medGray },
+            bodyStyles: { textColor: darkGray, lineColor: lightGray },
+            alternateRowStyles: { fillColor: white },
+            columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
+            margin: { left: 14, right: 14 }
+          });
+
+          y = (doc as any).lastAutoTable.finalY + 6;
+        }
+
+        if (y > 240) { doc.addPage(); y = 20; }
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...darkGray);
+        doc.text(`Totale Spese Documentate: ${report.totalExpenses.toFixed(2)} €`, 196, y, { align: 'right' });
+        y += 10;
+      } else {
+        autoTable(doc, {
+          startY: y,
+          head: [['Data', 'Tipo', 'Dettaglio', 'Importo']],
+          body: report.expenses.map(e => [
+            new Date(e.date).toLocaleDateString('it-IT'),
+            EXPENSE_TYPE_LABELS[e.expenseType],
+            (e.fromLocation && e.toLocation) ? `${e.fromLocation} -> ${e.toLocation}` : (e.description || '-'),
+            `${e.amount.toFixed(2)} €`
+          ]),
+          foot: [['', '', 'TOTALE', `${report.totalExpenses.toFixed(2)} €`]],
+          theme: 'grid',
+          headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 9, lineColor: medGray },
+          bodyStyles: { textColor: darkGray, lineColor: lightGray },
+          footStyles: { fontStyle: 'bold', fillColor: lightGray, textColor: black, lineColor: medGray },
+          alternateRowStyles: { fillColor: white },
+          columnStyles: { 3: { halign: 'right', fontStyle: 'bold' } },
+          margin: { left: 14, right: 14 }
+        });
+
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
     }
 
     if (report.accommodations.length > 0) {
@@ -350,7 +564,15 @@ const ReportsPage: React.FC = () => {
       doc.text(`Pagina ${i} di ${pageCount}`, 196, 291, { align: 'right' });
     }
 
-    doc.save(`nota-spese_${person.surname.toLowerCase()}_${monthName.toLowerCase()}-${report.year}.pdf`);
+    const suffix = periodType === 'mensile'
+      ? `${MONTH_NAMES_IT[parseInt(selectedMonth)].toLowerCase()}-${selectedYear}`
+      : periodType === 'trimestrale'
+        ? `T${selectedQuarter}-${selectedYear}`
+        : periodType === 'semestrale'
+          ? `S${selectedSemester}-${selectedYear}`
+          : `${customDateFrom}_${customDateTo}`;
+
+    doc.save(`nota-spese_${person.surname.toLowerCase()}_${suffix}.pdf`);
   };
 
   const tripColumns = [
@@ -432,13 +654,17 @@ const ReportsPage: React.FC = () => {
     { key: 'purpose', header: 'Motivo' },
   ];
 
+  const multiMonth = isMultiMonth();
+  const reportDateFrom = report && isPeriodReport(report) ? report.dateFrom : null;
+  const reportDateTo = report && isPeriodReport(report) ? report.dateTo : null;
+
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-800">Report Mensili</h1>
+      <h1 className="text-2xl font-bold text-gray-800">Report Trasferte</h1>
 
       <Card>
         <div className="mb-6">
-          <h2 className="text-lg font-medium text-gray-900 mb-4">Genera Report Mensile</h2>
+          <h2 className="text-lg font-medium text-gray-900 mb-4">Genera Report</h2>
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Filtra persone per Ruolo</label>
@@ -492,12 +718,64 @@ const ReportsPage: React.FC = () => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-            <Select id="month" label="Mese" options={monthOptions} value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
-            <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Tipo di Periodo</label>
+            <div className="flex flex-wrap gap-3">
+              {([
+                { value: 'mensile', label: 'Mensile' },
+                { value: 'trimestrale', label: 'Trimestrale' },
+                { value: 'semestrale', label: 'Semestrale' },
+                { value: 'personalizzato', label: 'Personalizzato' },
+              ] as { value: ReportPeriodType; label: string }[]).map(opt => (
+                <button
+                  key={opt.value}
+                  onClick={() => setPeriodType(opt.value)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition-colors ${
+                    periodType === opt.value
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-teal-400'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
           </div>
 
-          <Button variant="primary" icon={<FileText size={18} />} onClick={handleGenerateReport} disabled={!selectedPerson}>
+          {periodType === 'mensile' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Select id="month" label="Mese" options={monthOptions} value={selectedMonth} onChange={e => setSelectedMonth(e.target.value)} />
+              <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
+            </div>
+          )}
+
+          {periodType === 'trimestrale' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Select id="quarter" label="Trimestre" options={quarterOptions} value={selectedQuarter} onChange={e => setSelectedQuarter(e.target.value)} />
+              <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
+            </div>
+          )}
+
+          {periodType === 'semestrale' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Select id="semester" label="Semestre" options={semesterOptions} value={selectedSemester} onChange={e => setSelectedSemester(e.target.value)} />
+              <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
+            </div>
+          )}
+
+          {periodType === 'personalizzato' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Input id="dateFrom" label="Data Inizio" type="date" value={customDateFrom} onChange={e => setCustomDateFrom(e.target.value)} />
+              <Input id="dateTo" label="Data Fine" type="date" value={customDateTo} onChange={e => setCustomDateTo(e.target.value)} />
+            </div>
+          )}
+
+          <Button
+            variant="primary"
+            icon={<FileText size={18} />}
+            onClick={handleGenerateReport}
+            disabled={!selectedPerson || (periodType === 'personalizzato' && (!customDateFrom || !customDateTo))}
+          >
             Genera Report
           </Button>
         </div>
@@ -536,9 +814,7 @@ const ReportsPage: React.FC = () => {
                   </h2>
                   {selectedTripRole !== 'all' && getRoleBadge(selectedTripRole)}
                 </div>
-                <p className="text-sm text-gray-600">
-                  {new Date(report.year, report.month).toLocaleString('it-IT', { month: 'long' })} {report.year}
-                </p>
+                <p className="text-sm text-gray-600">{getReportPeriodLabel(report)}</p>
               </div>
               <Button variant="primary" icon={<Download size={18} />} onClick={handleDownloadPDF}>
                 Scarica PDF
@@ -579,7 +855,23 @@ const ReportsPage: React.FC = () => {
                   <FileText size={18} className="text-teal-500" />
                   Rimborsi Chilometrici ({report.trips.length} trasferte)
                 </h3>
-                <Table columns={tripColumns} data={report.trips} keyExtractor={t => t.id} />
+
+                {multiMonth && reportDateFrom && reportDateTo ? (
+                  <div className="space-y-4">
+                    {getTripsByMonth(report.trips, reportDateFrom, reportDateTo).map(monthGroup => (
+                      <div key={`${monthGroup.year}-${monthGroup.month}`}>
+                        <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200">
+                          <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
+                        </div>
+                        <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+                          <Table columns={tripColumns} data={monthGroup.trips} keyExtractor={t => t.id} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <Table columns={tripColumns} data={report.trips} keyExtractor={t => t.id} />
+                )}
               </div>
             )}
 
@@ -589,40 +881,89 @@ const ReportsPage: React.FC = () => {
                   <Receipt size={18} className="text-orange-500" />
                   Spese di Viaggio e Trasferimento ({report.expenses.length} voci)
                 </h3>
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        {['Data', 'Tipo', 'Dettaglio', 'Note', 'Importo'].map(h => (
-                          <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {report.expenses.map(expense => (
-                        <tr key={expense.id} className="hover:bg-gray-50">
-                          <td className="px-4 py-3 text-sm text-gray-600">{formatDate(expense.date)}</td>
-                          <td className="px-4 py-3">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
-                              {EXPENSE_TYPE_LABELS[expense.expenseType]}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-700">
-                            {expense.fromLocation && expense.toLocation
-                              ? `${expense.fromLocation} → ${expense.toLocation}`
-                              : expense.description || '-'}
-                          </td>
-                          <td className="px-4 py-3 text-sm text-gray-500">{expense.notes || '-'}</td>
-                          <td className="px-4 py-3 text-sm font-bold text-gray-900">{expense.amount.toFixed(2)} €</td>
+
+                {multiMonth && reportDateFrom && reportDateTo ? (
+                  <div className="space-y-4">
+                    {getExpensesByMonth(report.expenses, reportDateFrom, reportDateTo).map(monthGroup => (
+                      <div key={`${monthGroup.year}-${monthGroup.month}`}>
+                        <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200">
+                          <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
+                        </div>
+                        <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  {['Data', 'Tipo', 'Dettaglio', 'Note', 'Importo'].map(h => (
+                                    <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                                  ))}
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {monthGroup.expenses.map(expense => (
+                                  <tr key={expense.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-3 text-sm text-gray-600">{formatDate(expense.date)}</td>
+                                    <td className="px-4 py-3">
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                        {EXPENSE_TYPE_LABELS[expense.expenseType]}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-700">
+                                      {expense.fromLocation && expense.toLocation
+                                        ? `${expense.fromLocation} \u2192 ${expense.toLocation}`
+                                        : expense.description || '-'}
+                                    </td>
+                                    <td className="px-4 py-3 text-sm text-gray-500">{expense.notes || '-'}</td>
+                                    <td className="px-4 py-3 text-sm font-bold text-gray-900">{expense.amount.toFixed(2)} €</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="bg-orange-50 px-4 py-3 rounded-lg text-right">
+                      <span className="text-sm font-semibold text-gray-700">Totale Spese Documentate: </span>
+                      <span className="text-sm font-bold text-orange-700">{report.totalExpenses.toFixed(2)} €</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          {['Data', 'Tipo', 'Dettaglio', 'Note', 'Importo'].map(h => (
+                            <th key={h} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{h}</th>
+                          ))}
                         </tr>
-                      ))}
-                      <tr className="bg-orange-50">
-                        <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-700 text-right">Totale Spese Documentate:</td>
-                        <td className="px-4 py-3 text-sm font-bold text-orange-700">{report.totalExpenses.toFixed(2)} €</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {report.expenses.map(expense => (
+                          <tr key={expense.id} className="hover:bg-gray-50">
+                            <td className="px-4 py-3 text-sm text-gray-600">{formatDate(expense.date)}</td>
+                            <td className="px-4 py-3">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">
+                                {EXPENSE_TYPE_LABELS[expense.expenseType]}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-700">
+                              {expense.fromLocation && expense.toLocation
+                                ? `${expense.fromLocation} \u2192 ${expense.toLocation}`
+                                : expense.description || '-'}
+                            </td>
+                            <td className="px-4 py-3 text-sm text-gray-500">{expense.notes || '-'}</td>
+                            <td className="px-4 py-3 text-sm font-bold text-gray-900">{expense.amount.toFixed(2)} €</td>
+                          </tr>
+                        ))}
+                        <tr className="bg-orange-50">
+                          <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-700 text-right">Totale Spese Documentate:</td>
+                          <td className="px-4 py-3 text-sm font-bold text-orange-700">{report.totalExpenses.toFixed(2)} €</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 
