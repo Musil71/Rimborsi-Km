@@ -907,7 +907,45 @@ const TripForm: React.FC = () => {
             )}
 
             <div className="space-y-3">
-              <div className="flex items-center mb-4">
+              {state.savedRoutes.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center mb-2">
+                    <Route className="h-4 w-4 text-blue-500 mr-1.5" />
+                    <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">Percorsi salvati</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {state.savedRoutes.map(route => {
+                      const isSelected = formData.savedRouteId === route.id && !formData.useCustomDestination;
+                      return (
+                        <button
+                          key={route.id}
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              savedRouteId: route.id,
+                              destination: route.destination,
+                              useCustomDestination: false,
+                              selectedDistanceId: '',
+                            }));
+                            updateAvailableDistances(route.id);
+                            if (errors.destination) setErrors(prev => ({ ...prev, destination: undefined }));
+                          }}
+                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 ${
+                            isSelected
+                              ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
+                              : 'bg-white border-blue-200 text-blue-800 hover:bg-blue-50 hover:border-blue-400'
+                          }`}
+                        >
+                          <span>{route.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center">
                 <input
                   id="useCustomDestination"
                   name="useCustomDestination"
@@ -921,7 +959,7 @@ const TripForm: React.FC = () => {
                 </label>
               </div>
 
-              {formData.useCustomDestination ? (
+              {formData.useCustomDestination && (
                 <Input
                   id="destination"
                   name="destination"
@@ -929,20 +967,6 @@ const TripForm: React.FC = () => {
                   onChange={handleChange}
                   error={errors.destination}
                   placeholder="Inserisci l'indirizzo di destinazione"
-                  required
-                />
-              ) : (
-                <Select
-                  id="savedRouteId"
-                  name="savedRouteId"
-                  label="Seleziona un percorso salvato"
-                  options={state.savedRoutes.map(r => ({
-                    value: r.id,
-                    label: `${r.name} (${r.destination})`
-                  }))}
-                  value={formData.savedRouteId}
-                  onChange={handleSavedRouteChange}
-                  error={errors.destination}
                   required
                 />
               )}
