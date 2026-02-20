@@ -59,10 +59,6 @@ const PeoplePage: React.FC = () => {
       ),
     },
     {
-      key: 'email',
-      header: 'Email',
-    },
-    {
       key: 'vehicles',
       header: 'Veicoli',
       render: (person: Person) => {

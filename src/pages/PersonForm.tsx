@@ -16,9 +16,6 @@ interface PersonFormData {
   isDocente: boolean;
   isAmministratore: boolean;
   isDipendente: boolean;
-  email: string;
-  phone: string;
-  homeAddress: string;
 }
 
 interface VehicleFormData {
@@ -57,9 +54,6 @@ const PersonForm: React.FC = () => {
     isDocente: false,
     isAmministratore: false,
     isDipendente: false,
-    email: '',
-    phone: '',
-    homeAddress: '',
   });
 
   const [vehicleFormData, setVehicleFormData] = useState<VehicleFormData>({
@@ -82,9 +76,6 @@ const PersonForm: React.FC = () => {
         isDocente: person.isDocente,
         isAmministratore: person.isAmministratore,
         isDipendente: person.isDipendente,
-        email: person.email || '',
-        phone: person.phone || '',
-        homeAddress: person.homeAddress || '',
       });
     }
   }, [person]);
@@ -168,9 +159,6 @@ const PersonForm: React.FC = () => {
       isDocente: personFormData.isDocente,
       isAmministratore: personFormData.isAmministratore,
       isDipendente: personFormData.isDipendente,
-      email: personFormData.email || undefined,
-      phone: personFormData.phone || undefined,
-      homeAddress: personFormData.homeAddress || undefined,
     };
 
     try {
@@ -365,34 +353,6 @@ const PersonForm: React.FC = () => {
               <p className="mt-2 text-sm text-red-600">{personErrors.roles}</p>
             )}
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              id="email"
-              name="email"
-              label="Email"
-              type="email"
-              value={personFormData.email}
-              onChange={handlePersonChange}
-            />
-
-            <Input
-              id="phone"
-              name="phone"
-              label="Telefono"
-              value={personFormData.phone}
-              onChange={handlePersonChange}
-            />
-          </div>
-
-          <Input
-            id="homeAddress"
-            name="homeAddress"
-            label="Indirizzo di Casa"
-            value={personFormData.homeAddress}
-            onChange={handlePersonChange}
-            placeholder="Via, Città"
-          />
 
           <div className="flex justify-end">
             <Button

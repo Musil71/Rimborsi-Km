@@ -9,9 +9,6 @@ export interface Person {
   isDocente: boolean;
   isAmministratore: boolean;
   isDipendente: boolean;
-  email?: string;
-  phone?: string;
-  homeAddress?: string;
 }
 
 export interface Vehicle {

@@ -92,10 +92,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         surname: p.surname || '',
         isDocente: p.is_docente || false,
         isAmministratore: p.is_amministratore || false,
-        isDipendente: p.is_dipendente || false,
-        email: p.email,
-        phone: p.phone,
-        homeAddress: p.home_address
+        isDipendente: p.is_dipendente || false
       }));
 
       const vehicles: Vehicle[] = (vehiclesRes.data || []).map(v => ({
@@ -226,10 +223,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         surname: person.surname,
         is_docente: person.isDocente,
         is_amministratore: person.isAmministratore,
-        is_dipendente: person.isDipendente,
-        email: person.email || null,
-        phone: person.phone || null,
-        home_address: person.homeAddress || null
+        is_dipendente: person.isDipendente
       }])
       .select()
       .single();
@@ -244,10 +238,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         surname: data.surname,
         isDocente: data.is_docente || false,
         isAmministratore: data.is_amministratore || false,
-        isDipendente: data.is_dipendente || false,
-        email: data.email,
-        phone: data.phone,
-        homeAddress: data.home_address
+        isDipendente: data.is_dipendente || false
       }, ...prev.people]
     }));
   };
@@ -260,10 +251,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         surname: person.surname,
         is_docente: person.isDocente,
         is_amministratore: person.isAmministratore,
-        is_dipendente: person.isDipendente,
-        email: person.email || null,
-        phone: person.phone || null,
-        home_address: person.homeAddress || null
+        is_dipendente: person.isDipendente
       })
       .eq('id', person.id);
 
