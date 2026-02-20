@@ -195,7 +195,7 @@ const SavedRouteForm: React.FC = () => {
       addSavedRoute(routeData);
     }
 
-    navigate('/percorsi');
+    navigate('/percorsi?tab=percorsi');
   };
 
   const canCalculateDistance = formData.origin.trim() && formData.destination.trim();
@@ -206,7 +206,7 @@ const SavedRouteForm: React.FC = () => {
         <Button
           variant="secondary"
           icon={<ArrowLeft size={18} />}
-          onClick={() => navigate('/percorsi')}
+          onClick={() => navigate('/percorsi?tab=percorsi')}
         >
           Torna all'elenco
         </Button>
