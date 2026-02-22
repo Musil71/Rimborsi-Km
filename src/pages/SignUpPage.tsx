@@ -26,10 +26,12 @@ const SignUpPage: React.FC = () => {
     personId?: string;
   }>({});
 
-  const peopleOptions = state.people.map((person) => ({
-    value: person.id,
-    label: `${person.name} ${person.surname}`,
-  }));
+  const peopleOptions = [...state.people]
+    .sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name))
+    .map((person) => ({
+      value: person.id,
+      label: `${person.surname} ${person.name}`,
+    }));
 
   const validate = () => {
     const newErrors: {

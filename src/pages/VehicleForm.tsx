@@ -127,10 +127,12 @@ const VehicleForm: React.FC = () => {
   };
 
   // Prepare people options for select
-  const peopleOptions = state.people.map((person) => ({
-    value: person.id,
-    label: `${person.name} ${person.surname} (${person.role})`,
-  }));
+  const peopleOptions = [...state.people]
+    .sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name))
+    .map((person) => ({
+      value: person.id,
+      label: `${person.surname} ${person.name} (${person.role})`,
+    }));
 
   // Prepare car brands options for select
   const carBrandsOptions = CAR_BRANDS.map((brand) => ({

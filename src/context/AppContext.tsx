@@ -78,7 +78,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         peopleRes, vehiclesRes, tripsRes, routesRes, distancesRes,
         tollBoothsRes, tripMealsRes, expensesRes, accommodationsRes, favDestRes, clientsRes
       ] = await Promise.all([
-        supabase.from('people').select('*').order('created_at', { ascending: false }),
+        supabase.from('people').select('*').order('surname', { ascending: true }).order('name', { ascending: true }),
         supabase.from('vehicles').select('*').order('created_at', { ascending: false }),
         supabase.from('trips').select('*').order('date', { ascending: false }),
         supabase.from('saved_routes').select('*').order('created_at', { ascending: false }),

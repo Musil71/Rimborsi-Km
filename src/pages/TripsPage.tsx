@@ -221,7 +221,7 @@ const TripsPage: React.FC = () => {
           <Select
             id="personFilter"
             label="Filtra per persona"
-            options={state.people.map(p => ({ value: p.id, label: `${p.name} ${p.surname}` }))}
+            options={[...state.people].sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name)).map(p => ({ value: p.id, label: `${p.surname} ${p.name}` }))}
             value={personFilter}
             onChange={(e) => setPersonFilter(e.target.value)}
           />

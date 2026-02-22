@@ -131,7 +131,7 @@ const AccommodationsPage: React.FC = () => {
             label="Persona"
             options={[
               { value: '', label: 'Tutte le persone' },
-              ...state.people.map(p => ({ value: p.id, label: `${p.name} ${p.surname}` }))
+              ...[...state.people].sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name)).map(p => ({ value: p.id, label: `${p.surname} ${p.name}` }))
             ]}
             value={filterPerson}
             onChange={e => setFilterPerson(e.target.value)}
@@ -231,7 +231,7 @@ const AccommodationsPage: React.FC = () => {
               label="Persona *"
               options={[
                 { value: '', label: 'Seleziona persona...' },
-                ...state.people.map(p => ({ value: p.id, label: `${p.name} ${p.surname}` }))
+                ...[...state.people].sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name)).map(p => ({ value: p.id, label: `${p.surname} ${p.name}` }))
               ]}
               value={form.personId}
               onChange={e => setForm(f => ({ ...f, personId: e.target.value }))}

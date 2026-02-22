@@ -65,14 +65,16 @@ const ReportsPage: React.FC = () => {
     { value: '2', label: '2° Semestre (Lug – Dic)' },
   ];
 
-  const filteredPeople = state.people.filter(person => {
-    if (!filterDocenti && !filterAmministratori && !filterDipendenti) return true;
-    return (
-      (filterDocenti && person.isDocente) ||
-      (filterAmministratori && person.isAmministratore) ||
-      (filterDipendenti && person.isDipendente)
-    );
-  });
+  const filteredPeople = state.people
+    .filter(person => {
+      if (!filterDocenti && !filterAmministratori && !filterDipendenti) return true;
+      return (
+        (filterDocenti && person.isDocente) ||
+        (filterAmministratori && person.isAmministratore) ||
+        (filterDipendenti && person.isDipendente)
+      );
+    })
+    .sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name));
 
   const getQuarterRange = (quarter: number, year: number): { dateFrom: Date; dateTo: Date; label: string } => {
     const starts = [0, 3, 6, 9];
@@ -732,7 +734,7 @@ const ReportsPage: React.FC = () => {
                   if (p.isDocente) roles.push('D');
                   if (p.isAmministratore) roles.push('A');
                   if (p.isDipendente) roles.push('Dip');
-                  return { value: p.id, label: `${p.name} ${p.surname} (${roles.join(', ')})` };
+                  return { value: p.id, label: `${p.surname} ${p.name} (${roles.join(', ')})` };
                 })
               ]}
               value={selectedPerson}

@@ -726,14 +726,14 @@ const TripForm: React.FC = () => {
               id="personId"
               name="personId"
               label="Persona"
-              options={state.people.map(p => {
+              options={[...state.people].sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name)).map(p => {
                 const roles = [];
                 if (p.isDocente) roles.push('D');
                 if (p.isAmministratore) roles.push('A');
                 if (p.isDipendente) roles.push('Dip');
                 return {
                   value: p.id,
-                  label: `${p.name} ${p.surname} (${roles.join(', ')})`
+                  label: `${p.surname} ${p.name} (${roles.join(', ')})`
                 };
               })}
               value={formData.personId}

@@ -18,14 +18,16 @@ const PeoplePage: React.FC = () => {
     }
   };
 
-  const filteredPeople = state.people.filter(
-    (person) =>
-      person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      person.surname.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (searchTerm.toLowerCase().includes('docent') && person.isDocente) ||
-      (searchTerm.toLowerCase().includes('amministrat') && person.isAmministratore) ||
-      (searchTerm.toLowerCase().includes('dipendent') && person.isDipendente)
-  );
+  const filteredPeople = state.people
+    .filter(
+      (person) =>
+        person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        person.surname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (searchTerm.toLowerCase().includes('docent') && person.isDocente) ||
+        (searchTerm.toLowerCase().includes('amministrat') && person.isAmministratore) ||
+        (searchTerm.toLowerCase().includes('dipendent') && person.isDipendente)
+    )
+    .sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name));
 
   const columns = [
     {
