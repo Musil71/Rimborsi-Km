@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils } from 'lucide-react';
+import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, Building2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Button from '../components/Button';
@@ -38,6 +38,7 @@ const ReportsPage: React.FC = () => {
   const [filterAmministratori, setFilterAmministratori] = useState(true);
   const [filterDipendenti, setFilterDipendenti] = useState(true);
   const [selectedTripRole, setSelectedTripRole] = useState<string>('all');
+  const [selectedClient, setSelectedClient] = useState<string>('all');
   const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
   const [noDataFound, setNoDataFound] = useState(false);
 
@@ -98,6 +99,34 @@ const ReportsPage: React.FC = () => {
       dateTo: new Date(year, 11, 31),
       label: `2° Semestre ${year} (Luglio – Dicembre)`
     };
+  };
+
+  const applyClientFilter = (reportData: AnyReport, clientId: string): AnyReport => {
+    if (clientId === 'all') return reportData;
+    const filteredTrips = clientId === 'none'
+      ? reportData.trips.filter(t => !t.clientId)
+      : reportData.trips.filter(t => t.clientId === clientId);
+    let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
+    filteredTrips.forEach(trip => {
+      const vehicle = getVehicle(trip.vehicleId);
+      if (vehicle) {
+        const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+        totalDistance += d;
+        totalReimbursement += d * vehicle.reimbursementRate;
+      }
+      if (trip.hasToll && trip.tollAmount) {
+        totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+      }
+      if (trip.isRoundTrip && trip.returnTollAmount) {
+        totalTollFees += trip.returnTollAmount;
+      }
+      if (trip.meals && trip.meals.length > 0) {
+        trip.meals.forEach(m => { totalMealReimbursement += m.amount; });
+      } else if (trip.hasMeal && trip.mealAmount) {
+        totalMealReimbursement += trip.mealAmount;
+      }
+    });
+    return { ...reportData, trips: filteredTrips, totalDistance, totalReimbursement, totalTollFees, totalMealReimbursement };
   };
 
   const applyTripRoleFilter = (reportData: AnyReport, role: string): AnyReport => {
@@ -164,7 +193,8 @@ const ReportsPage: React.FC = () => {
     const rolesUsed = Object.entries(roleCounts).filter(([_, count]) => count > 0);
     setMultiRoleInfo({ hasMultipleRoles: rolesUsed.length > 1, roleCounts });
 
-    const finalReport = applyTripRoleFilter(rawReport, selectedTripRole);
+    const clientFiltered = applyClientFilter(rawReport, selectedClient);
+    const finalReport = applyTripRoleFilter(clientFiltered, selectedTripRole);
     setReport(finalReport);
   };
 
@@ -277,8 +307,12 @@ const ReportsPage: React.FC = () => {
     doc.text('NOTA SPESE DI TRASFERTA', 14, 16);
 
     const roleLabel = selectedTripRole !== 'all' ? roleLabels[selectedTripRole] : null;
+    const clientLabel = selectedClient !== 'all'
+      ? (selectedClient === 'none' ? 'Uso interno' : state.clients.find(c => c.id === selectedClient)?.name || null)
+      : null;
     const subtitleParts = [personLabel, periodLabel];
     if (roleLabel) subtitleParts.push(roleLabel);
+    if (clientLabel) subtitleParts.push(clientLabel);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -717,6 +751,26 @@ const ReportsPage: React.FC = () => {
               onChange={e => setSelectedTripRole(e.target.value)}
             />
           </div>
+
+          {state.clients.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Building2 className="h-4 w-4 text-blue-500" />
+                <label className="block text-sm font-medium text-gray-700">Filtra per Cliente</label>
+              </div>
+              <Select
+                id="clientFilter"
+                label=""
+                options={[
+                  { value: 'all', label: 'Tutti (clienti + uso interno)' },
+                  { value: 'none', label: 'Solo uso interno (senza cliente)' },
+                  ...state.clients.map(c => ({ value: c.id, label: c.name }))
+                ]}
+                value={selectedClient}
+                onChange={e => setSelectedClient(e.target.value)}
+              />
+            </div>
+          )}
 
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Tipo di Periodo</label>

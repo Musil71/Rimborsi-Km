@@ -68,6 +68,7 @@ export interface Trip {
   mealType?: 'pranzo' | 'cena';
   mealAmount?: number;
   meals?: TripMeal[];
+  clientId?: string;
 }
 
 export interface TripExpense {
@@ -128,6 +129,14 @@ export interface PeriodReport {
   totalAccommodations: number;
 }
 
+export interface Client {
+  id: string;
+  name: string;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface TollBooth {
   id: string;
   entryStation: string;
@@ -157,6 +166,7 @@ export interface AppState {
   tripExpenses: TripExpense[];
   accommodations: Accommodation[];
   favoriteDestinations: FavoriteDestination[];
+  clients: Client[];
 }
 
 export interface UserProfile {
