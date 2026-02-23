@@ -39,7 +39,7 @@ const HomePage: React.FC = () => {
       color: 'bg-amber-100'
     },
     {
-      title: 'Percorsi Salvati',
+      title: 'Destinazioni Abituali',
       value: state.savedRoutes.length,
       icon: <Route className="h-8 w-8 text-rose-500" />,
       link: '/percorsi',
@@ -121,7 +121,7 @@ const HomePage: React.FC = () => {
             <h4 className="font-semibold text-gray-800 mb-2">Per iniziare:</h4>
             <ul className="list-disc list-inside text-gray-600 space-y-1">
               <li>Aggiungi il personale e i loro veicoli in <Link to="/persone" className="text-teal-600 hover:underline">Persone</Link></li>
-              <li>Crea percorsi frequenti in <Link to="/percorsi" className="text-teal-600 hover:underline">Percorsi Salvati</Link></li>
+              <li>Crea destinazioni abituali in <Link to="/percorsi" className="text-teal-600 hover:underline">Destinazioni Abituali</Link></li>
               <li>Registra le trasferte in <Link to="/tragitti" className="text-teal-600 hover:underline">Trasferte</Link></li>
               <li>Genera report mensili nella sezione <Link to="/report" className="text-teal-600 hover:underline">Report</Link></li>
             </ul>
