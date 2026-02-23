@@ -432,7 +432,7 @@ const ReportsPage: React.FC = () => {
             const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
             const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
             return [
-              new Date(trip.date).toLocaleDateString('it-IT'),
+              (() => { const d = new Date(trip.date); return `${d.getDate()}/${d.getMonth() + 1}`; })(),
               `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
               vehicle ? vehicle.plate : '-',
               `${dist.toFixed(1)} km`,
@@ -450,7 +450,7 @@ const ReportsPage: React.FC = () => {
             headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 8, lineColor: medGray },
             bodyStyles: { fontSize: 7.5, textColor: darkGray, lineColor: lightGray },
             alternateRowStyles: { fillColor: white },
-            columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 38 }, 2: { cellWidth: 14 }, 3: { cellWidth: 14 }, 4: { cellWidth: 18 }, 5: { cellWidth: 16 }, 6: { cellWidth: 18 }, 7: { cellWidth: 22 } },
+            columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 38 }, 2: { cellWidth: 18 }, 3: { cellWidth: 14 }, 4: { cellWidth: 18 }, 5: { cellWidth: 16 }, 6: { cellWidth: 18 }, 7: { cellWidth: 22 } },
             margin: { left: 14, right: 14 }
           });
 
@@ -468,7 +468,7 @@ const ReportsPage: React.FC = () => {
           const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
           const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
           return [
-            new Date(trip.date).toLocaleDateString('it-IT'),
+            (() => { const d = new Date(trip.date); return `${d.getDate()}/${d.getMonth() + 1}`; })(),
             `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
             vehicle ? vehicle.plate : '-',
             `${dist.toFixed(1)} km`,
@@ -486,7 +486,7 @@ const ReportsPage: React.FC = () => {
           headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 8, lineColor: medGray },
           bodyStyles: { fontSize: 7.5, textColor: darkGray, lineColor: lightGray },
           alternateRowStyles: { fillColor: white },
-          columnStyles: { 0: { cellWidth: 16 }, 1: { cellWidth: 38 }, 2: { cellWidth: 14 }, 3: { cellWidth: 14 }, 4: { cellWidth: 18 }, 5: { cellWidth: 16 }, 6: { cellWidth: 18 }, 7: { cellWidth: 22 } },
+          columnStyles: { 0: { cellWidth: 12 }, 1: { cellWidth: 38 }, 2: { cellWidth: 18 }, 3: { cellWidth: 14 }, 4: { cellWidth: 18 }, 5: { cellWidth: 16 }, 6: { cellWidth: 18 }, 7: { cellWidth: 22 } },
           margin: { left: 14, right: 14 }
         });
 
