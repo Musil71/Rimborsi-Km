@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy, Plus, Trash2, Utensils, Receipt, Star } from 'lucide-react';
+import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Copy, Plus, Trash2, Utensils, Receipt, Star } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -34,8 +34,6 @@ interface FormData {
   distance: string;
   purpose: string;
   isRoundTrip: boolean;
-  savedRouteId: string;
-  selectedDistanceId: string;
   selectedOfficeId: string;
   useCustomOrigin: boolean;
   useCustomDestination: boolean;
@@ -75,7 +73,6 @@ const TripForm: React.FC = () => {
     getPerson,
     getVehicle,
     getVehiclesForPerson,
-    getSavedRoute,
     getTollBooth,
     searchTollStations
   } = useAppContext();
@@ -95,8 +92,6 @@ const TripForm: React.FC = () => {
     distance: '',
     purpose: '',
     isRoundTrip: false,
-    savedRouteId: '',
-    selectedDistanceId: '',
     selectedOfficeId: DEFAULT_OFFICE.id,
     useCustomOrigin: false,
     useCustomDestination: false,
@@ -117,29 +112,20 @@ const TripForm: React.FC = () => {
   const [availableRoles, setAvailableRoles] = useState<{ value: Role; label: string; }[]>([]);
   const [reimbursement, setReimbursement] = useState<number | null>(null);
   const [tollAmount, setTollAmount] = useState<number | null>(null);
-  const [availableDistances, setAvailableDistances] = useState<{ value: string; label: string; }[]>([]);
   const [matchedTollBooth, setMatchedTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
   const [matchedReturnTollBooth, setMatchedReturnTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
 
   useEffect(() => {
     if (trip) {
-      const savedRoute = trip.savedRouteId ? getSavedRoute(trip.savedRouteId) : null;
       const person = getPerson(trip.personId);
       const matchedOffice = ITFV_OFFICES.find(o => o.address === trip.origin);
       const personHomeAddress = person?.homeAddress || DEFAULT_OFFICE.address;
 
-      // Update available vehicles and roles first
       if (trip.personId) {
         updateAvailableVehicles(trip.personId);
         updateAvailableRoles(trip.personId);
       }
 
-      // Update available distances if there's a saved route
-      if (trip.savedRouteId) {
-        updateAvailableDistances(trip.savedRouteId);
-      }
-
-      // Set form data after updating available options
       setFormData({
         date: new Date(trip.date).toISOString().split('T')[0],
         personId: trip.personId,
@@ -150,11 +136,9 @@ const TripForm: React.FC = () => {
         distance: trip.distance.toString(),
         purpose: trip.purpose,
         isRoundTrip: trip.isRoundTrip,
-        savedRouteId: trip.savedRouteId || '',
-        selectedDistanceId: trip.selectedDistanceId || '',
         selectedOfficeId: matchedOffice ? matchedOffice.id : DEFAULT_OFFICE.id,
         useCustomOrigin: !matchedOffice && trip.origin !== personHomeAddress,
-        useCustomDestination: !savedRoute,
+        useCustomDestination: true,
         hasToll: trip.hasToll || false,
         tollEntryStation: trip.tollEntryStation || '',
         tollExitStation: trip.tollExitStation || '',
@@ -195,10 +179,6 @@ const TripForm: React.FC = () => {
         updateAvailableRoles(duplicateData.personId);
       }
 
-      if (duplicateData.savedRouteId) {
-        updateAvailableDistances(duplicateData.savedRouteId);
-      }
-
       setFormData({
         date: new Date().toISOString().split('T')[0],
         personId: duplicateData.personId,
@@ -209,10 +189,9 @@ const TripForm: React.FC = () => {
         distance: duplicateData.distance.toString(),
         purpose: duplicateData.purpose,
         isRoundTrip: duplicateData.isRoundTrip,
-        savedRouteId: duplicateData.savedRouteId || '',
-        selectedDistanceId: duplicateData.selectedDistanceId || '',
+        selectedOfficeId: ITFV_OFFICES.find(o => o.address === duplicateData.origin)?.id || DEFAULT_OFFICE.id,
         useCustomOrigin: person ? duplicateData.origin !== person.homeAddress : false,
-        useCustomDestination: !duplicateData.savedRouteId,
+        useCustomDestination: true,
         hasToll: duplicateData.hasToll || false,
         tollEntryStation: duplicateData.tollEntryStation || '',
         tollExitStation: duplicateData.tollExitStation || '',
@@ -338,20 +317,6 @@ const TripForm: React.FC = () => {
     // Auto-select first available role if current role is not available
     if (roles.length > 0 && !roles.some(r => r.value === formData.tripRole)) {
       setFormData(prev => ({ ...prev, tripRole: roles[0].value }));
-    }
-  };
-
-  const updateAvailableDistances = (routeId: string) => {
-    const route = getSavedRoute(routeId);
-    if (route) {
-      setAvailableDistances(
-        route.distances.map((d) => ({
-          value: d.id,
-          label: `${d.label} (${d.distance.toFixed(1)} km)`,
-        }))
-      );
-    } else {
-      setAvailableDistances([]);
     }
   };
 
@@ -504,12 +469,9 @@ const TripForm: React.FC = () => {
         setFormData(prev => ({
           ...prev,
           [name]: checked,
-          savedRouteId: '',
-          selectedDistanceId: '',
           destination: '',
           distance: '',
         }));
-        setAvailableDistances([]);
       } else {
         setFormData(prev => ({ ...prev, [name]: checked }));
       }
@@ -522,62 +484,6 @@ const TripForm: React.FC = () => {
       }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
-    }
-  };
-
-  const handleSavedRouteChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const routeId = e.target.value;
-    const route = getSavedRoute(routeId);
-
-    if (route) {
-      updateAvailableDistances(routeId);
-      setFormData(prev => ({
-        ...prev,
-        savedRouteId: routeId,
-        destination: route.destination,
-        selectedDistanceId: '',
-        distance: '',
-      }));
-    } else {
-      setAvailableDistances([]);
-      setFormData(prev => ({
-        ...prev,
-        savedRouteId: '',
-        selectedDistanceId: '',
-        destination: '',
-        distance: '',
-      }));
-    }
-  };
-
-  const handleDistanceOptionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const distanceId = e.target.value;
-    const route = getSavedRoute(formData.savedRouteId);
-
-    if (route && distanceId) {
-      const selectedDistance = route.distances.find(d => d.id === distanceId);
-      if (selectedDistance) {
-        const hasTollData = !!(selectedDistance.tollEntryStation || selectedDistance.tollExitStation || selectedDistance.tollAmount);
-        setFormData(prev => ({
-          ...prev,
-          selectedDistanceId: distanceId,
-          distance: selectedDistance.distance.toString(),
-          hasToll: hasTollData,
-          tollEntryStation: selectedDistance.tollEntryStation || '',
-          tollExitStation: selectedDistance.tollExitStation || '',
-          tollAmount: selectedDistance.tollAmount ? selectedDistance.tollAmount.toString() : '',
-        }));
-      }
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        selectedDistanceId: '',
-        distance: '',
-        hasToll: false,
-        tollEntryStation: '',
-        tollExitStation: '',
-        tollAmount: '',
-      }));
     }
   };
 
@@ -617,8 +523,6 @@ const TripForm: React.FC = () => {
       distance: parseFloat(formData.distance),
       purpose: formData.purpose,
       isRoundTrip: formData.isRoundTrip,
-      savedRouteId: formData.savedRouteId || undefined,
-      selectedDistanceId: formData.selectedDistanceId || undefined,
       hasToll: formData.hasToll,
       tollEntryStation: formData.hasToll ? formData.tollEntryStation : undefined,
       tollExitStation: formData.hasToll ? formData.tollExitStation : undefined,
@@ -883,8 +787,6 @@ const TripForm: React.FC = () => {
                             destination: dest.address,
                             distance: String(dest.defaultDistance),
                             useCustomDestination: true,
-                            savedRouteId: '',
-                            selectedDistanceId: '',
                           }));
                           if (errors.destination) setErrors(prev => ({ ...prev, destination: undefined }));
                         }}
@@ -907,44 +809,6 @@ const TripForm: React.FC = () => {
             )}
 
             <div className="space-y-3">
-              {state.savedRoutes.length > 0 && (
-                <div className="mb-4">
-                  <div className="flex items-center mb-2">
-                    <Route className="h-4 w-4 text-blue-500 mr-1.5" />
-                    <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">Percorsi salvati</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {state.savedRoutes.map(route => {
-                      const isSelected = formData.savedRouteId === route.id && !formData.useCustomDestination;
-                      return (
-                        <button
-                          key={route.id}
-                          type="button"
-                          onClick={() => {
-                            setFormData(prev => ({
-                              ...prev,
-                              savedRouteId: route.id,
-                              destination: route.destination,
-                              useCustomDestination: false,
-                              selectedDistanceId: '',
-                            }));
-                            updateAvailableDistances(route.id);
-                            if (errors.destination) setErrors(prev => ({ ...prev, destination: undefined }));
-                          }}
-                          className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 ${
-                            isSelected
-                              ? 'bg-blue-500 border-blue-500 text-white shadow-sm'
-                              : 'bg-white border-blue-200 text-blue-800 hover:bg-blue-50 hover:border-blue-400'
-                          }`}
-                        >
-                          <span>{route.name}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-center">
                 <input
                   id="useCustomDestination"
@@ -973,30 +837,7 @@ const TripForm: React.FC = () => {
             </div>
           </div>
 
-          {/* Distance Selection for Saved Routes */}
-          {formData.savedRouteId && !formData.useCustomDestination && availableDistances.length > 0 && (
-            <div className="bg-teal-50 p-4 rounded-lg border border-teal-100 mb-4">
-              <div className="flex items-center mb-3">
-                <Route className="h-5 w-5 text-teal-500 mr-2" />
-                <span className="font-medium text-teal-800">Opzioni di Percorso</span>
-              </div>
-              <Select
-                id="selectedDistanceId"
-                name="selectedDistanceId"
-                label="Seleziona il tipo di percorso"
-                options={availableDistances}
-                value={formData.selectedDistanceId}
-                onChange={handleDistanceOptionChange}
-                required
-              />
-              <p className="text-xs text-teal-600 mt-1">
-                Scegli l'opzione di percorso che intendi utilizzare (es. strada normale, autostrada)
-              </p>
-            </div>
-          )}
-
-          {/* Google Maps Distance Calculator - only show if using custom destination or no distance selected */}
-          {(formData.useCustomDestination || (!formData.selectedDistanceId && formData.savedRouteId)) && (
+          {formData.useCustomDestination && (
             <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-4">
               <div className="flex items-start">
                 <Info className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
@@ -1036,9 +877,8 @@ const TripForm: React.FC = () => {
             value={formData.distance}
             onChange={handleChange}
             error={errors.distance}
-            placeholder={formData.selectedDistanceId ? "Distanza selezionata automaticamente" : "Inserisci la distanza da Google Maps"}
+            placeholder="Inserisci la distanza da Google Maps"
             required
-            disabled={!!formData.selectedDistanceId}
           />
 
           <div className="flex items-center mb-4">

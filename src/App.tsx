@@ -9,7 +9,6 @@ import TripsPage from './pages/TripsPage';
 import TripForm from './pages/TripForm';
 import ReportsPage from './pages/ReportsPage';
 import SavedRoutesPage from './pages/SavedRoutesPage';
-import SavedRouteForm from './pages/SavedRouteForm';
 import LoginPage from './pages/LoginPage';
 import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
@@ -40,10 +39,8 @@ function App() {
         <Route path="tragitti/nuovo" element={<TripForm />} />
         <Route path="tragitti/:id" element={<TripForm />} />
 
-        {/* Percorsi salvati routes */}
+        {/* Destinazioni abituali */}
         <Route path="percorsi" element={<SavedRoutesPage />} />
-        <Route path="percorsi/nuovo" element={<SavedRouteForm />} />
-        <Route path="percorsi/:id" element={<SavedRouteForm />} />
 
         {/* Report routes */}
         <Route path="report" element={<ReportsPage />} />

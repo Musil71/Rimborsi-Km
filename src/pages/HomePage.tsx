@@ -40,7 +40,7 @@ const HomePage: React.FC = () => {
     },
     {
       title: 'Destinazioni Abituali',
-      value: state.savedRoutes.length,
+      value: state.favoriteDestinations.length,
       icon: <Route className="h-8 w-8 text-rose-500" />,
       link: '/percorsi',
       color: 'bg-rose-100'
