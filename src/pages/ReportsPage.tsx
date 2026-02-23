@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, Building2 } from 'lucide-react';
+import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, MapPin } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Button from '../components/Button';
@@ -38,7 +38,8 @@ const ReportsPage: React.FC = () => {
   const [filterAmministratori, setFilterAmministratori] = useState(true);
   const [filterDipendenti, setFilterDipendenti] = useState(true);
   const [selectedTripRole, setSelectedTripRole] = useState<string>('all');
-  const [selectedClient, setSelectedClient] = useState<string>('all');
+  const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
+  const [availableDestinations, setAvailableDestinations] = useState<string[]>([]);
   const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
   const [noDataFound, setNoDataFound] = useState(false);
 
@@ -103,11 +104,9 @@ const ReportsPage: React.FC = () => {
     };
   };
 
-  const applyClientFilter = (reportData: AnyReport, clientId: string): AnyReport => {
-    if (clientId === 'all') return reportData;
-    const filteredTrips = clientId === 'none'
-      ? reportData.trips.filter(t => !t.clientId)
-      : reportData.trips.filter(t => t.clientId === clientId);
+  const applyDestinationFilter = (reportData: AnyReport, destinations: string[]): AnyReport => {
+    if (destinations.length === 0) return reportData;
+    const filteredTrips = reportData.trips.filter(t => destinations.includes(t.destination));
     let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
     filteredTrips.forEach(trip => {
       const vehicle = getVehicle(trip.vehicleId);
@@ -195,8 +194,48 @@ const ReportsPage: React.FC = () => {
     const rolesUsed = Object.entries(roleCounts).filter(([_, count]) => count > 0);
     setMultiRoleInfo({ hasMultipleRoles: rolesUsed.length > 1, roleCounts });
 
-    const clientFiltered = applyClientFilter(rawReport, selectedClient);
-    const finalReport = applyTripRoleFilter(clientFiltered, selectedTripRole);
+    const uniqueDestinations = Array.from(new Set(rawReport.trips.map(t => t.destination))).sort();
+    setAvailableDestinations(uniqueDestinations);
+    setSelectedDestinations([]);
+
+    const destinationFiltered = applyDestinationFilter(rawReport, []);
+    const finalReport = applyTripRoleFilter(destinationFiltered, selectedTripRole);
+    setReport(finalReport);
+  };
+
+  const handleDestinationToggle = (dest: string) => {
+    setSelectedDestinations(prev => {
+      const next = prev.includes(dest) ? prev.filter(d => d !== dest) : [...prev, dest];
+      if (!report) return next;
+      const rawReport = (() => {
+        const year = parseInt(selectedYear);
+        if (periodType === 'mensile') return generateMonthlyReport(selectedPerson, parseInt(selectedMonth), year);
+        if (periodType === 'trimestrale') { const r = getQuarterRange(parseInt(selectedQuarter), year); return generatePeriodReport(selectedPerson, r.dateFrom, r.dateTo, r.label); }
+        if (periodType === 'semestrale') { const r = getSemesterRange(parseInt(selectedSemester), year); return generatePeriodReport(selectedPerson, r.dateFrom, r.dateTo, r.label); }
+        if (periodType === 'personalizzato' && customDateFrom && customDateTo) { const from = new Date(customDateFrom); const to = new Date(customDateTo); return generatePeriodReport(selectedPerson, from, to, `${from.toLocaleDateString('it-IT')} – ${to.toLocaleDateString('it-IT')}`); }
+        return null;
+      })();
+      if (!rawReport) return next;
+      const destinationFiltered = applyDestinationFilter(rawReport, next);
+      const finalReport = applyTripRoleFilter(destinationFiltered, selectedTripRole);
+      setReport(finalReport);
+      return next;
+    });
+  };
+
+  const handleSelectAllDestinations = () => {
+    setSelectedDestinations([]);
+    if (!report) return;
+    const rawReport = (() => {
+      const year = parseInt(selectedYear);
+      if (periodType === 'mensile') return generateMonthlyReport(selectedPerson, parseInt(selectedMonth), year);
+      if (periodType === 'trimestrale') { const r = getQuarterRange(parseInt(selectedQuarter), year); return generatePeriodReport(selectedPerson, r.dateFrom, r.dateTo, r.label); }
+      if (periodType === 'semestrale') { const r = getSemesterRange(parseInt(selectedSemester), year); return generatePeriodReport(selectedPerson, r.dateFrom, r.dateTo, r.label); }
+      if (periodType === 'personalizzato' && customDateFrom && customDateTo) { const from = new Date(customDateFrom); const to = new Date(customDateTo); return generatePeriodReport(selectedPerson, from, to, `${from.toLocaleDateString('it-IT')} – ${to.toLocaleDateString('it-IT')}`); }
+      return null;
+    })();
+    if (!rawReport) return;
+    const finalReport = applyTripRoleFilter(rawReport, selectedTripRole);
     setReport(finalReport);
   };
 
@@ -309,12 +348,12 @@ const ReportsPage: React.FC = () => {
     doc.text('NOTA SPESE DI TRASFERTA', 14, 16);
 
     const roleLabel = selectedTripRole !== 'all' ? roleLabels[selectedTripRole] : null;
-    const clientLabel = selectedClient !== 'all'
-      ? (selectedClient === 'none' ? 'Uso interno' : state.clients.find(c => c.id === selectedClient)?.name || null)
+    const destLabel = selectedDestinations.length > 0
+      ? selectedDestinations.join(', ')
       : null;
     const subtitleParts = [personLabel, periodLabel];
     if (roleLabel) subtitleParts.push(roleLabel);
-    if (clientLabel) subtitleParts.push(clientLabel);
+    if (destLabel) subtitleParts.push(destLabel);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
@@ -754,26 +793,6 @@ const ReportsPage: React.FC = () => {
             />
           </div>
 
-          {state.clients.length > 0 && (
-            <div className="mb-4">
-              <div className="flex items-center gap-2 mb-2">
-                <Building2 className="h-4 w-4 text-blue-500" />
-                <label className="block text-sm font-medium text-gray-700">Filtra per Cliente</label>
-              </div>
-              <Select
-                id="clientFilter"
-                label=""
-                options={[
-                  { value: 'all', label: 'Tutti (clienti + uso interno)' },
-                  { value: 'none', label: 'Solo uso interno (senza cliente)' },
-                  ...state.clients.map(c => ({ value: c.id, label: c.name }))
-                ]}
-                value={selectedClient}
-                onChange={e => setSelectedClient(e.target.value)}
-              />
-            </div>
-          )}
-
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Tipo di Periodo</label>
             <div className="flex flex-wrap gap-3">
@@ -858,6 +877,44 @@ const ReportsPage: React.FC = () => {
                     </ul>
                     <p className="text-sm text-amber-700">Si consiglia di generare report separati per ogni ruolo usando il filtro apposito.</p>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {availableDestinations.length > 1 && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="h-4 w-4 text-teal-600" />
+                    <span className="text-sm font-medium text-gray-700">Filtra per Destinazione</span>
+                    {selectedDestinations.length > 0 && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">
+                        {selectedDestinations.length} selezionate
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleSelectAllDestinations}
+                    className="text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors"
+                  >
+                    {selectedDestinations.length === 0 ? 'Mostra tutte' : 'Deseleziona tutte'}
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {availableDestinations.map(dest => (
+                    <button
+                      key={dest}
+                      onClick={() => handleDestinationToggle(dest)}
+                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        selectedDestinations.length === 0 || selectedDestinations.includes(dest)
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'
+                      }`}
+                    >
+                      <MapPin size={11} className="mr-1" />
+                      {dest}
+                    </button>
+                  ))}
                 </div>
               </div>
             )}

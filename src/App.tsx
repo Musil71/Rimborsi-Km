@@ -16,7 +16,6 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ExpensesPage from './pages/ExpensesPage';
 import AccommodationsPage from './pages/AccommodationsPage';
-import ClientsPage from './pages/ClientsPage';
 
 function App() {
   return (
@@ -53,8 +52,6 @@ function App() {
         {/* Alloggi routes */}
         <Route path="alloggi" element={<AccommodationsPage />} />
 
-        {/* Clienti routes */}
-        <Route path="clienti" element={<ClientsPage />} />
       </Route>
     </Routes>
   );

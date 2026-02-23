@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   AppState, Person, Vehicle, Trip, SavedRoute, MonthlyReport, PeriodReport,
-  RouteDistance, TollBooth, TripExpense, Accommodation, TripMeal, FavoriteDestination, Client
+  RouteDistance, TollBooth, TripExpense, Accommodation, TripMeal, FavoriteDestination
 } from '../types';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -33,9 +33,6 @@ interface AppContextType {
   addFavoriteDestination: (dest: Omit<FavoriteDestination, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateFavoriteDestination: (dest: FavoriteDestination) => Promise<void>;
   deleteFavoriteDestination: (id: string) => Promise<void>;
-  addClient: (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
-  updateClient: (client: Client) => Promise<void>;
-  deleteClient: (id: string) => Promise<void>;
   generateMonthlyReport: (personId: string, month: number, year: number) => MonthlyReport | null;
   generatePeriodReport: (personId: string, dateFrom: Date, dateTo: Date, periodLabel: string) => PeriodReport | null;
   getPerson: (id: string) => Person | undefined;
@@ -62,7 +59,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     tripExpenses: [],
     accommodations: [],
     favoriteDestinations: [],
-    clients: []
   });
   const [loading, setLoading] = useState(true);
 
@@ -76,7 +72,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       const [
         peopleRes, vehiclesRes, tripsRes, routesRes, distancesRes,
-        tollBoothsRes, tripMealsRes, expensesRes, accommodationsRes, favDestRes, clientsRes
+        tollBoothsRes, tripMealsRes, expensesRes, accommodationsRes, favDestRes
       ] = await Promise.all([
         supabase.from('people').select('*').order('surname', { ascending: true }).order('name', { ascending: true }),
         supabase.from('vehicles').select('*').order('created_at', { ascending: false }),
@@ -88,7 +84,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         supabase.from('trip_expenses').select('*').order('date', { ascending: false }),
         supabase.from('accommodations').select('*').order('date_from', { ascending: false }),
         supabase.from('favorite_destinations').select('*').order('name', { ascending: true }),
-        supabase.from('clients').select('*').order('name', { ascending: true })
       ]);
 
       const people: Person[] = (peopleRes.data || []).map(p => ({
@@ -144,7 +139,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         mealType: t.meal_type,
         mealAmount: t.meal_amount ? parseFloat(t.meal_amount) : undefined,
         meals: mealsMap.get(t.id) || [],
-        clientId: t.client_id || undefined
       }));
 
       const distancesMap = new Map<string, RouteDistance[]>();
@@ -213,15 +207,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updatedAt: d.updated_at
       }));
 
-      const clients: Client[] = (clientsRes.data || []).map(c => ({
-        id: c.id,
-        name: c.name,
-        notes: c.notes || '',
-        createdAt: c.created_at,
-        updatedAt: c.updated_at
-      }));
-
-      setState({ people, vehicles, trips, savedRoutes, tollBooths, tripExpenses, accommodations, favoriteDestinations, clients });
+      setState({ people, vehicles, trips, savedRoutes, tollBooths, tripExpenses, accommodations, favoriteDestinations });
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -377,7 +363,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         has_meal: (meals && meals.length > 0) || trip.hasMeal || false,
         meal_type: trip.mealType,
         meal_amount: trip.mealAmount,
-        client_id: trip.clientId || null
       }])
       .select()
       .single();
@@ -429,7 +414,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         mealType: data.meal_type,
         mealAmount: data.meal_amount ? parseFloat(data.meal_amount) : undefined,
         meals: savedMeals,
-        clientId: data.client_id || undefined
       }, ...prev.trips]
     }));
   };
@@ -459,7 +443,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         has_meal: (meals && meals.length > 0) || trip.hasMeal || false,
         meal_type: trip.mealType,
         meal_amount: trip.mealAmount,
-        client_id: trip.clientId || null
       })
       .eq('id', trip.id);
 
@@ -829,53 +812,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
-  const addClient = async (client: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const { data, error } = await supabase
-      .from('clients')
-      .insert([{ name: client.name, notes: client.notes || '' }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    setState(prev => ({
-      ...prev,
-      clients: [...prev.clients, {
-        id: data.id,
-        name: data.name,
-        notes: data.notes || '',
-        createdAt: data.created_at,
-        updatedAt: data.updated_at
-      }].sort((a, b) => a.name.localeCompare(b.name))
-    }));
-  };
-
-  const updateClient = async (client: Client) => {
-    const { error } = await supabase
-      .from('clients')
-      .update({ name: client.name, notes: client.notes, updated_at: new Date().toISOString() })
-      .eq('id', client.id);
-
-    if (error) throw error;
-
-    setState(prev => ({
-      ...prev,
-      clients: prev.clients
-        .map(c => c.id === client.id ? client : c)
-        .sort((a, b) => a.name.localeCompare(b.name))
-    }));
-  };
-
-  const deleteClient = async (id: string) => {
-    const { error } = await supabase.from('clients').delete().eq('id', id);
-    if (error) throw error;
-
-    setState(prev => ({
-      ...prev,
-      clients: prev.clients.filter(c => c.id !== id)
-    }));
-  };
-
   const generatePeriodReport = (personId: string, dateFrom: Date, dateTo: Date, periodLabel: string): PeriodReport | null => {
     const person = state.people.find(p => p.id === personId);
     if (!person) return null;
@@ -1087,7 +1023,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addTripExpense, updateTripExpense, deleteTripExpense,
     addAccommodation, updateAccommodation, deleteAccommodation,
     addFavoriteDestination, updateFavoriteDestination, deleteFavoriteDestination,
-    addClient, updateClient, deleteClient,
     generateMonthlyReport, generatePeriodReport,
     getPerson, getVehicle, getVehiclesForPerson,
     getSavedRoute, getRouteDistance,

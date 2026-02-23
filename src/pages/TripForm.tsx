@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy, Plus, Trash2, Utensils, Receipt, Star, Building2 } from 'lucide-react';
+import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Route, Copy, Plus, Trash2, Utensils, Receipt, Star } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -49,7 +49,6 @@ interface FormData {
   returnTollAmount: string;
   meals: MealEntry[];
   travelExpenses: TravelExpenseEntry[];
-  clientId: string;
 }
 
 interface FormErrors {
@@ -111,7 +110,6 @@ const TripForm: React.FC = () => {
     returnTollAmount: '',
     meals: [],
     travelExpenses: [],
-    clientId: '',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -167,7 +165,6 @@ const TripForm: React.FC = () => {
         returnTollAmount: trip.returnTollAmount ? trip.returnTollAmount.toString() : '',
         meals: tripMealsToEntries(trip),
         travelExpenses: tripExpensesToEntries(trip.id),
-        clientId: trip.clientId || '',
       });
     }
   }, [trip]);
@@ -226,7 +223,6 @@ const TripForm: React.FC = () => {
         returnTollAmount: duplicateData.returnTollAmount ? duplicateData.returnTollAmount.toString() : '',
         meals: tripMealsToEntries(duplicateData),
         travelExpenses: [],
-        clientId: duplicateData.clientId || '',
       });
     }
   }, [isDuplicating]);
@@ -630,7 +626,6 @@ const TripForm: React.FC = () => {
       returnTollEntryStation: (formData.hasToll && formData.isRoundTrip && formData.hasReturnToll) ? formData.returnTollEntryStation : undefined,
       returnTollExitStation: (formData.hasToll && formData.isRoundTrip && formData.hasReturnToll) ? formData.returnTollExitStation : undefined,
       returnTollAmount: (formData.hasToll && formData.isRoundTrip && formData.hasReturnToll && formData.returnTollAmount) ? parseFloat(formData.returnTollAmount) : undefined,
-      clientId: formData.clientId || undefined,
     };
 
     const validExpenses = formData.travelExpenses.filter(e => e.amount && parseFloat(e.amount) > 0);
@@ -811,29 +806,6 @@ const TripForm: React.FC = () => {
               </div>
             )}
           </div>
-
-          {state.clients.length > 0 && (
-            <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-              <div className="flex items-center mb-2">
-                <Building2 className="h-5 w-5 text-blue-500 mr-2" />
-                <span className="font-medium text-blue-800">Cliente (opzionale)</span>
-              </div>
-              <Select
-                id="clientId"
-                name="clientId"
-                label=""
-                options={[
-                  { value: '', label: 'Nessun cliente / uso interno' },
-                  ...state.clients.map(c => ({ value: c.id, label: c.name }))
-                ]}
-                value={formData.clientId}
-                onChange={handleChange}
-              />
-              <p className="text-xs text-blue-600 mt-1">
-                Seleziona il cliente per cui si svolge la trasferta (es. Villaggio SOS, Comune di Venezia)
-              </p>
-            </div>
-          )}
 
           <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 mb-4">
             <div className="flex items-center mb-3">
