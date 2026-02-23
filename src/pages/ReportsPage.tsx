@@ -39,6 +39,7 @@ const ReportsPage: React.FC = () => {
   const [filterDipendenti, setFilterDipendenti] = useState(true);
   const [selectedTripRole, setSelectedTripRole] = useState<string>('all');
   const [selectedFavDestinations, setSelectedFavDestinations] = useState<string[]>([]);
+  const [destinationFilterMode, setDestinationFilterMode] = useState<'include' | 'exclude'>('include');
   const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
   const [noDataFound, setNoDataFound] = useState(false);
 
@@ -103,9 +104,11 @@ const ReportsPage: React.FC = () => {
     };
   };
 
-  const applyDestinationFilter = (reportData: AnyReport, destinations: string[]): AnyReport => {
+  const applyDestinationFilter = (reportData: AnyReport, destinations: string[], mode: 'include' | 'exclude'): AnyReport => {
     if (destinations.length === 0) return reportData;
-    const filteredTrips = reportData.trips.filter(t => destinations.includes(t.destination));
+    const filteredTrips = reportData.trips.filter(t =>
+      mode === 'include' ? destinations.includes(t.destination) : !destinations.includes(t.destination)
+    );
     let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
     filteredTrips.forEach(trip => {
       const vehicle = getVehicle(trip.vehicleId);
@@ -199,7 +202,7 @@ const ReportsPage: React.FC = () => {
           .map(d => d.address)
       : [];
 
-    const destinationFiltered = applyDestinationFilter(rawReport, selectedAddresses);
+    const destinationFiltered = applyDestinationFilter(rawReport, selectedAddresses, destinationFilterMode);
     const finalReport = applyTripRoleFilter(destinationFiltered, selectedTripRole);
     setReport(finalReport);
   };
@@ -320,7 +323,8 @@ const ReportsPage: React.FC = () => {
 
     const roleLabel = selectedTripRole !== 'all' ? roleLabels[selectedTripRole] : null;
     const destLabel = selectedFavDestinations.length > 0
-      ? state.favoriteDestinations
+      ? (destinationFilterMode === 'exclude' ? 'Escl.: ' : '') +
+        state.favoriteDestinations
           .filter(d => selectedFavDestinations.includes(d.id))
           .map(d => d.name)
           .join(', ')
@@ -825,14 +829,38 @@ const ReportsPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700">
                   Filtra per Destinazione Abituale
                 </label>
-                {selectedFavDestinations.length > 0 && (
-                  <button
-                    onClick={() => setSelectedFavDestinations([])}
-                    className="text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors"
-                  >
-                    Deseleziona tutte
-                  </button>
-                )}
+                <div className="flex items-center gap-3">
+                  <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+                    <button
+                      onClick={() => setDestinationFilterMode('include')}
+                      className={`px-3 py-1.5 font-medium transition-colors ${
+                        destinationFilterMode === 'include'
+                          ? 'bg-teal-600 text-white'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      Includi
+                    </button>
+                    <button
+                      onClick={() => setDestinationFilterMode('exclude')}
+                      className={`px-3 py-1.5 font-medium border-l border-gray-300 transition-colors ${
+                        destinationFilterMode === 'exclude'
+                          ? 'bg-red-600 text-white border-red-600'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      Escludi
+                    </button>
+                  </div>
+                  {selectedFavDestinations.length > 0 && (
+                    <button
+                      onClick={() => setSelectedFavDestinations([])}
+                      className="text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors"
+                    >
+                      Deseleziona tutte
+                    </button>
+                  )}
+                </div>
               </div>
               <div className="flex flex-wrap gap-2">
                 {state.favoriteDestinations
@@ -844,7 +872,9 @@ const ReportsPage: React.FC = () => {
                       onClick={() => handleFavDestinationToggle(dest.id)}
                       className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
                         selectedFavDestinations.includes(dest.id)
-                          ? 'bg-teal-600 text-white border-teal-600'
+                          ? destinationFilterMode === 'include'
+                            ? 'bg-teal-600 text-white border-teal-600'
+                            : 'bg-red-600 text-white border-red-600'
                           : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'
                       }`}
                     >
@@ -854,8 +884,11 @@ const ReportsPage: React.FC = () => {
                   ))}
               </div>
               {selectedFavDestinations.length > 0 && (
-                <p className="mt-2 text-xs text-teal-700">
-                  Verranno incluse solo le trasferte verso: {state.favoriteDestinations.filter(d => selectedFavDestinations.includes(d.id)).map(d => d.name).join(', ')}
+                <p className={`mt-2 text-xs ${destinationFilterMode === 'include' ? 'text-teal-700' : 'text-red-700'}`}>
+                  {destinationFilterMode === 'include'
+                    ? `Verranno incluse solo le trasferte verso: ${state.favoriteDestinations.filter(d => selectedFavDestinations.includes(d.id)).map(d => d.name).join(', ')}`
+                    : `Verranno escluse le trasferte verso: ${state.favoriteDestinations.filter(d => selectedFavDestinations.includes(d.id)).map(d => d.name).join(', ')}`
+                  }
                 </p>
               )}
             </div>
