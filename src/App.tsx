@@ -16,6 +16,7 @@ import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ExpensesPage from './pages/ExpensesPage';
 import AccommodationsPage from './pages/AccommodationsPage';
+import PersonTripsPage from './pages/PersonTripsPage';
 
 function App() {
   return (
@@ -35,6 +36,7 @@ function App() {
 
         {/* Tragitti routes */}
         <Route path="tragitti" element={<TripsPage />} />
+        <Route path="tragitti/persona/:id" element={<PersonTripsPage />} />
         <Route path="tragitti/nuovo" element={<TripForm />} />
         <Route path="tragitti/:id" element={<TripForm />} />
 
