@@ -15,6 +15,7 @@ const PersonTripsPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [monthFilter, setMonthFilter] = useState('');
+  const [roleFilter, setRoleFilter] = useState('');
 
   const person = state.people.find(p => p.id === id);
   const personTrips = state.trips.filter(t => t.personId === id);
@@ -39,11 +40,21 @@ const PersonTripsPage: React.FC = () => {
     return options;
   };
 
+  const roleOptions = [
+    { value: '', label: 'Tutti i ruoli' },
+    { value: 'docente', label: 'Docente' },
+    { value: 'dipendente', label: 'Dipendente' },
+    { value: 'amministratore', label: 'Amministratore' },
+  ];
+
   const filteredTrips = personTrips.filter(t => {
-    if (!monthFilter) return true;
-    const [y, m] = monthFilter.split('-').map(Number);
-    const d = new Date(t.date);
-    return d.getFullYear() === y && d.getMonth() === m - 1;
+    if (monthFilter) {
+      const [y, m] = monthFilter.split('-').map(Number);
+      const d = new Date(t.date);
+      if (!(d.getFullYear() === y && d.getMonth() === m - 1)) return false;
+    }
+    if (roleFilter && t.tripRole !== roleFilter) return false;
+    return true;
   }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   const totalKm = filteredTrips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
@@ -115,13 +126,22 @@ const PersonTripsPage: React.FC = () => {
       </div>
 
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-        <div className="w-full sm:w-64">
+        <div className="w-full sm:w-56">
           <Select
             id="month-filter"
             label=""
             options={monthOptions()}
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
+          />
+        </div>
+        <div className="w-full sm:w-52">
+          <Select
+            id="role-filter"
+            label=""
+            options={roleOptions}
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
           />
         </div>
         {filteredTrips.length > 0 && (
@@ -144,7 +164,7 @@ const PersonTripsPage: React.FC = () => {
         <div className="text-center py-20 text-gray-400">
           <Route size={40} className="mx-auto mb-3 opacity-40" />
           <p className="text-sm">
-            {monthFilter ? 'Nessuna trasferta nel mese selezionato.' : 'Nessuna trasferta registrata.'}
+            {(monthFilter || roleFilter) ? 'Nessuna trasferta corrisponde ai filtri selezionati.' : 'Nessuna trasferta registrata.'}
           </p>
         </div>
       ) : (
@@ -201,27 +221,30 @@ const PersonTripsPage: React.FC = () => {
                   )}
                 </div>
 
-                <div className="flex items-center gap-1.5 flex-shrink-0">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   <button
                     title="Modifica"
                     onClick={() => navigate(`/tragitti/${trip.id}`)}
-                    className="p-2 rounded-lg text-blue-600 hover:bg-blue-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 border border-blue-100 hover:bg-blue-50 transition-colors"
                   >
-                    <Edit size={15} />
+                    <Edit size={13} />
+                    Modifica
                   </button>
                   <button
                     title="Duplica"
                     onClick={() => handleDuplicate(trip)}
-                    className="p-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 border border-gray-200 hover:bg-gray-100 transition-colors"
                   >
-                    <Copy size={15} />
+                    <Copy size={13} />
+                    Duplica
                   </button>
                   <button
                     title="Elimina"
                     onClick={() => handleDelete(trip.id)}
-                    className="p-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 border border-red-100 hover:bg-red-50 transition-colors"
                   >
-                    <Trash2 size={15} />
+                    <Trash2 size={13} />
+                    Elimina
                   </button>
                 </div>
               </div>
