@@ -38,8 +38,7 @@ const ReportsPage: React.FC = () => {
   const [filterAmministratori, setFilterAmministratori] = useState(true);
   const [filterDipendenti, setFilterDipendenti] = useState(true);
   const [selectedTripRole, setSelectedTripRole] = useState<string>('all');
-  const [selectedDestinations, setSelectedDestinations] = useState<string[]>([]);
-  const [availableDestinations, setAvailableDestinations] = useState<string[]>([]);
+  const [selectedFavDestinations, setSelectedFavDestinations] = useState<string[]>([]);
   const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
   const [noDataFound, setNoDataFound] = useState(false);
 
@@ -194,49 +193,21 @@ const ReportsPage: React.FC = () => {
     const rolesUsed = Object.entries(roleCounts).filter(([_, count]) => count > 0);
     setMultiRoleInfo({ hasMultipleRoles: rolesUsed.length > 1, roleCounts });
 
-    const uniqueDestinations = Array.from(new Set(rawReport.trips.map(t => t.destination))).sort();
-    setAvailableDestinations(uniqueDestinations);
-    setSelectedDestinations([]);
+    const selectedAddresses = selectedFavDestinations.length > 0
+      ? state.favoriteDestinations
+          .filter(d => selectedFavDestinations.includes(d.id))
+          .map(d => d.address)
+      : [];
 
-    const destinationFiltered = applyDestinationFilter(rawReport, []);
+    const destinationFiltered = applyDestinationFilter(rawReport, selectedAddresses);
     const finalReport = applyTripRoleFilter(destinationFiltered, selectedTripRole);
     setReport(finalReport);
   };
 
-  const handleDestinationToggle = (dest: string) => {
-    setSelectedDestinations(prev => {
-      const next = prev.includes(dest) ? prev.filter(d => d !== dest) : [...prev, dest];
-      if (!report) return next;
-      const rawReport = (() => {
-        const year = parseInt(selectedYear);
-        if (periodType === 'mensile') return generateMonthlyReport(selectedPerson, parseInt(selectedMonth), year);
-        if (periodType === 'trimestrale') { const r = getQuarterRange(parseInt(selectedQuarter), year); return generatePeriodReport(selectedPerson, r.dateFrom, r.dateTo, r.label); }
-        if (periodType === 'semestrale') { const r = getSemesterRange(parseInt(selectedSemester), year); return generatePeriodReport(selectedPerson, r.dateFrom, r.dateTo, r.label); }
-        if (periodType === 'personalizzato' && customDateFrom && customDateTo) { const from = new Date(customDateFrom); const to = new Date(customDateTo); return generatePeriodReport(selectedPerson, from, to, `${from.toLocaleDateString('it-IT')} – ${to.toLocaleDateString('it-IT')}`); }
-        return null;
-      })();
-      if (!rawReport) return next;
-      const destinationFiltered = applyDestinationFilter(rawReport, next);
-      const finalReport = applyTripRoleFilter(destinationFiltered, selectedTripRole);
-      setReport(finalReport);
-      return next;
-    });
-  };
-
-  const handleSelectAllDestinations = () => {
-    setSelectedDestinations([]);
-    if (!report) return;
-    const rawReport = (() => {
-      const year = parseInt(selectedYear);
-      if (periodType === 'mensile') return generateMonthlyReport(selectedPerson, parseInt(selectedMonth), year);
-      if (periodType === 'trimestrale') { const r = getQuarterRange(parseInt(selectedQuarter), year); return generatePeriodReport(selectedPerson, r.dateFrom, r.dateTo, r.label); }
-      if (periodType === 'semestrale') { const r = getSemesterRange(parseInt(selectedSemester), year); return generatePeriodReport(selectedPerson, r.dateFrom, r.dateTo, r.label); }
-      if (periodType === 'personalizzato' && customDateFrom && customDateTo) { const from = new Date(customDateFrom); const to = new Date(customDateTo); return generatePeriodReport(selectedPerson, from, to, `${from.toLocaleDateString('it-IT')} – ${to.toLocaleDateString('it-IT')}`); }
-      return null;
-    })();
-    if (!rawReport) return;
-    const finalReport = applyTripRoleFilter(rawReport, selectedTripRole);
-    setReport(finalReport);
+  const handleFavDestinationToggle = (id: string) => {
+    setSelectedFavDestinations(prev =>
+      prev.includes(id) ? prev.filter(d => d !== id) : [...prev, id]
+    );
   };
 
   const getReportPeriodLabel = (r: AnyReport): string => {
@@ -348,8 +319,11 @@ const ReportsPage: React.FC = () => {
     doc.text('NOTA SPESE DI TRASFERTA', 14, 16);
 
     const roleLabel = selectedTripRole !== 'all' ? roleLabels[selectedTripRole] : null;
-    const destLabel = selectedDestinations.length > 0
-      ? selectedDestinations.join(', ')
+    const destLabel = selectedFavDestinations.length > 0
+      ? state.favoriteDestinations
+          .filter(d => selectedFavDestinations.includes(d.id))
+          .map(d => d.name)
+          .join(', ')
       : null;
     const subtitleParts = [personLabel, periodLabel];
     if (roleLabel) subtitleParts.push(roleLabel);
@@ -845,6 +819,48 @@ const ReportsPage: React.FC = () => {
             </div>
           )}
 
+          {state.favoriteDestinations.length > 0 && (
+            <div className="mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Filtra per Destinazione Abituale
+                </label>
+                {selectedFavDestinations.length > 0 && (
+                  <button
+                    onClick={() => setSelectedFavDestinations([])}
+                    className="text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors"
+                  >
+                    Deseleziona tutte
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {state.favoriteDestinations
+                  .slice()
+                  .sort((a, b) => a.name.localeCompare(b.name))
+                  .map(dest => (
+                    <button
+                      key={dest.id}
+                      onClick={() => handleFavDestinationToggle(dest.id)}
+                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                        selectedFavDestinations.includes(dest.id)
+                          ? 'bg-teal-600 text-white border-teal-600'
+                          : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'
+                      }`}
+                    >
+                      <MapPin size={11} className="mr-1.5" />
+                      {dest.name}
+                    </button>
+                  ))}
+              </div>
+              {selectedFavDestinations.length > 0 && (
+                <p className="mt-2 text-xs text-teal-700">
+                  Verranno incluse solo le trasferte verso: {state.favoriteDestinations.filter(d => selectedFavDestinations.includes(d.id)).map(d => d.name).join(', ')}
+                </p>
+              )}
+            </div>
+          )}
+
           <Button
             variant="primary"
             icon={<FileText size={18} />}
@@ -877,44 +893,6 @@ const ReportsPage: React.FC = () => {
                     </ul>
                     <p className="text-sm text-amber-700">Si consiglia di generare report separati per ogni ruolo usando il filtro apposito.</p>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {availableDestinations.length > 1 && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-teal-600" />
-                    <span className="text-sm font-medium text-gray-700">Filtra per Destinazione</span>
-                    {selectedDestinations.length > 0 && (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-700">
-                        {selectedDestinations.length} selezionate
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    onClick={handleSelectAllDestinations}
-                    className="text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors"
-                  >
-                    {selectedDestinations.length === 0 ? 'Mostra tutte' : 'Deseleziona tutte'}
-                  </button>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {availableDestinations.map(dest => (
-                    <button
-                      key={dest}
-                      onClick={() => handleDestinationToggle(dest)}
-                      className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
-                        selectedDestinations.length === 0 || selectedDestinations.includes(dest)
-                          ? 'bg-teal-600 text-white border-teal-600'
-                          : 'bg-white text-gray-600 border-gray-300 hover:border-teal-400'
-                      }`}
-                    >
-                      <MapPin size={11} className="mr-1" />
-                      {dest}
-                    </button>
-                  ))}
                 </div>
               </div>
             )}
