@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, MapPin } from 'lucide-react';
+import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, MapPin, Pencil } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Button from '../components/Button';
@@ -7,6 +7,7 @@ import Card from '../components/Card';
 import Select from '../components/Select';
 import Input from '../components/Input';
 import Table from '../components/Table';
+import QuickEditTripModal from '../components/QuickEditTripModal';
 import { useAppContext } from '../context/AppContext';
 import { Trip, MonthlyReport, PeriodReport, ReportPeriodType, EXPENSE_TYPE_LABELS } from '../types';
 import { COMPANY_INFO } from '../utils/itfvOffices';
@@ -42,6 +43,7 @@ const ReportsPage: React.FC = () => {
   const [destinationFilterMode, setDestinationFilterMode] = useState<'include' | 'exclude'>('include');
   const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
   const [noDataFound, setNoDataFound] = useState(false);
+  const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i.toString(),
@@ -205,6 +207,10 @@ const ReportsPage: React.FC = () => {
     const destinationFiltered = applyDestinationFilter(rawReport, selectedAddresses, destinationFilterMode);
     const finalReport = applyTripRoleFilter(destinationFiltered, selectedTripRole);
     setReport(finalReport);
+  };
+
+  const handleEditSaved = () => {
+    handleGenerateReport();
   };
 
   const handleFavDestinationToggle = (id: string) => {
@@ -705,6 +711,20 @@ const ReportsPage: React.FC = () => {
       },
     },
     { key: 'purpose', header: 'Motivo' },
+    {
+      key: 'actions',
+      header: '',
+      render: (trip: Trip) => (
+        <button
+          onClick={() => setEditingTrip(trip)}
+          className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800 font-medium transition-colors px-2 py-1 rounded hover:bg-teal-50"
+          title="Modifica trasferta"
+        >
+          <Pencil size={13} />
+          Modifica
+        </button>
+      ),
+    },
   ];
 
   const multiMonth = isMultiMonth();
@@ -1128,6 +1148,12 @@ const ReportsPage: React.FC = () => {
           </div>
         )}
       </Card>
+
+      <QuickEditTripModal
+        trip={editingTrip}
+        onClose={() => setEditingTrip(null)}
+        onSaved={handleEditSaved}
+      />
     </div>
   );
 };
