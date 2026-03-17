@@ -22,7 +22,13 @@ const VehicleRatesPage: React.FC = () => {
   const [localValues, setLocalValues] = useState<Record<string, string>>({});
   const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
-  const vehicles = state.vehicles;
+  const vehicles = [...state.vehicles].sort((a, b) => {
+    const pa = getPerson(a.personId);
+    const pb = getPerson(b.personId);
+    const nameA = pa ? `${pa.surname} ${pa.name}` : '';
+    const nameB = pb ? `${pb.surname} ${pb.name}` : '';
+    return nameA.localeCompare(nameB, 'it');
+  });
 
   const cellKey = (vehicleId: string, month: number) => `${vehicleId}-${selectedYear}-${month}`;
 
