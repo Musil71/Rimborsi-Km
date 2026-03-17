@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, Copy } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
 import { useAppContext } from '../context/AppContext';
-import { useToast } from '../context/ToastContext';
 
 const MONTHS = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
 
@@ -14,7 +13,6 @@ interface CellStatus {
 
 const VehicleRatesPage: React.FC = () => {
   const { state, upsertVehicleRate, getVehicleRateForMonth, getPerson } = useAppContext();
-  const { showToast } = useToast();
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
@@ -112,36 +110,6 @@ const VehicleRatesPage: React.FC = () => {
     }
   };
 
-  const handleCopyFromPreviousYear = async () => {
-    const prevYear = selectedYear - 1;
-    const prevYearEntries = state.vehicleRateHistory.filter(r => r.year === prevYear);
-    if (prevYearEntries.length === 0) {
-      showToast(`Nessuna tariffa trovata per il ${prevYear}`, 'error');
-      return;
-    }
-
-    let copied = 0;
-    for (const entry of prevYearEntries) {
-      const alreadyExists = state.vehicleRateHistory.find(
-        r => r.vehicleId === entry.vehicleId && r.year === selectedYear && r.month === entry.month
-      );
-      if (!alreadyExists) {
-        try {
-          await upsertVehicleRate(entry.vehicleId, selectedYear, entry.month, entry.rate);
-          copied++;
-        } catch {
-          // continue
-        }
-      }
-    }
-
-    if (copied > 0) {
-      showToast(`Copiate ${copied} tariffe dal ${prevYear}`, 'success');
-    } else {
-      showToast(`Tutte le tariffe del ${selectedYear} sono già presenti`, 'info' as 'success');
-    }
-  };
-
   const getCellBorderClass = (vehicleId: string, month: number): string => {
     const key = cellKey(vehicleId, month);
     const status = cellStatuses[key];
@@ -176,13 +144,15 @@ const VehicleRatesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleCopyFromPreviousYear}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors shadow-sm"
+          <a
+            href="https://costikm.aci.it/home"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
           >
-            <Copy size={16} />
-            Copia da {selectedYear - 1}
-          </button>
+            <ExternalLink size={16} />
+            Tariffe ACI
+          </a>
 
           <div className="flex items-center gap-2 bg-white border border-gray-200 rounded-lg shadow-sm">
             <button
