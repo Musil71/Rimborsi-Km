@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { Home, Users, Map, BarChart3, Menu, X, LogOut, Plus, Receipt, BedDouble, Star } from 'lucide-react';
+import { Home, Users, Map, BarChart3, Menu, X, LogOut, Plus, Receipt, BedDouble, Star, Gauge } from 'lucide-react';
 import { useState } from 'react';
 import classNames from 'classnames';
 import { useAuth } from '../context/AuthContext';
@@ -44,6 +44,7 @@ const Layout: React.FC = () => {
     { path: '/percorsi', label: 'Destinazioni', icon: <Star size={20} /> },
     { path: '/spese', label: 'Spese', icon: <Receipt size={20} /> },
     { path: '/alloggi', label: 'Alloggi', icon: <BedDouble size={20} /> },
+    { path: '/tariffe', label: 'Tariffe', icon: <Gauge size={20} /> },
     { path: '/report', label: 'Report', icon: <BarChart3 size={20} /> },
   ];
 

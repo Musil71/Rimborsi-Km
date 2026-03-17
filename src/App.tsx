@@ -16,6 +16,7 @@ import ResetPasswordPage from './pages/ResetPasswordPage';
 import ExpensesPage from './pages/ExpensesPage';
 import AccommodationsPage from './pages/AccommodationsPage';
 import PersonTripsPage from './pages/PersonTripsPage';
+import VehicleRatesPage from './pages/VehicleRatesPage';
 
 function App() {
   return (
@@ -50,6 +51,9 @@ function App() {
 
         {/* Alloggi routes */}
         <Route path="alloggi" element={<AccommodationsPage />} />
+
+        {/* Tariffe routes */}
+        <Route path="tariffe" element={<VehicleRatesPage />} />
 
       </Route>
     </Routes>

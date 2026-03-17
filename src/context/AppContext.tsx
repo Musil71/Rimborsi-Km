@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import {
   AppState, Person, Vehicle, Trip, SavedRoute, MonthlyReport, PeriodReport,
-  RouteDistance, TollBooth, TripExpense, Accommodation, TripMeal, FavoriteDestination
+  RouteDistance, TollBooth, TripExpense, Accommodation, TripMeal, FavoriteDestination,
+  VehicleRateHistory
 } from '../types';
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
@@ -33,6 +34,9 @@ interface AppContextType {
   addFavoriteDestination: (dest: Omit<FavoriteDestination, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateFavoriteDestination: (dest: FavoriteDestination) => Promise<void>;
   deleteFavoriteDestination: (id: string) => Promise<void>;
+  upsertVehicleRate: (vehicleId: string, year: number, month: number, rate: number) => Promise<void>;
+  deleteVehicleRate: (id: string) => Promise<void>;
+  getVehicleRateForMonth: (vehicleId: string, year: number, month: number) => number;
   generateMonthlyReport: (personId: string, month: number, year: number) => MonthlyReport | null;
   generatePeriodReport: (personId: string, dateFrom: Date, dateTo: Date, periodLabel: string) => PeriodReport | null;
   getPerson: (id: string) => Person | undefined;
@@ -59,6 +63,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     tripExpenses: [],
     accommodations: [],
     favoriteDestinations: [],
+    vehicleRateHistory: [],
   });
   const [loading, setLoading] = useState(true);
 
@@ -72,7 +77,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
       const [
         peopleRes, vehiclesRes, tripsRes, routesRes, distancesRes,
-        tollBoothsRes, tripMealsRes, expensesRes, accommodationsRes, favDestRes
+        tollBoothsRes, tripMealsRes, expensesRes, accommodationsRes, favDestRes, rateHistoryRes
       ] = await Promise.all([
         supabase.from('people').select('*').order('surname', { ascending: true }).order('name', { ascending: true }),
         supabase.from('vehicles').select('*').order('created_at', { ascending: false }),
@@ -84,6 +89,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         supabase.from('trip_expenses').select('*').order('date', { ascending: false }),
         supabase.from('accommodations').select('*').order('date_from', { ascending: false }),
         supabase.from('favorite_destinations').select('*').order('name', { ascending: true }),
+        supabase.from('vehicle_rate_history').select('*').order('year', { ascending: true }).order('month', { ascending: true }),
       ]);
 
       const people: Person[] = (peopleRes.data || []).map(p => ({
@@ -207,7 +213,17 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         updatedAt: d.updated_at
       }));
 
-      setState({ people, vehicles, trips, savedRoutes, tollBooths, tripExpenses, accommodations, favoriteDestinations });
+      const vehicleRateHistory: VehicleRateHistory[] = (rateHistoryRes.data || []).map(r => ({
+        id: r.id,
+        vehicleId: r.vehicle_id,
+        year: r.year,
+        month: r.month,
+        rate: parseFloat(r.rate),
+        createdAt: r.created_at,
+        updatedAt: r.updated_at
+      }));
+
+      setState({ people, vehicles, trips, savedRoutes, tollBooths, tripExpenses, accommodations, favoriteDestinations, vehicleRateHistory });
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -812,6 +828,81 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
   };
 
+  const getVehicleRateForMonth = (vehicleId: string, year: number, month: number): number => {
+    const vehicleHistory = state.vehicleRateHistory
+      .filter(r => r.vehicleId === vehicleId)
+      .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month);
+
+    const exact = vehicleHistory.find(r => r.year === year && r.month === month);
+    if (exact) return exact.rate;
+
+    const before = vehicleHistory
+      .filter(r => r.year < year || (r.year === year && r.month < month));
+    if (before.length > 0) return before[before.length - 1].rate;
+
+    if (vehicleHistory.length > 0) return vehicleHistory[0].rate;
+
+    const vehicle = state.vehicles.find(v => v.id === vehicleId);
+    return vehicle?.reimbursementRate ?? 0;
+  };
+
+  const upsertVehicleRate = async (vehicleId: string, year: number, month: number, rate: number) => {
+    const existing = state.vehicleRateHistory.find(
+      r => r.vehicleId === vehicleId && r.year === year && r.month === month
+    );
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('vehicle_rate_history')
+        .update({ rate, updated_at: new Date().toISOString() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        vehicleRateHistory: prev.vehicleRateHistory.map(r =>
+          r.id === existing.id
+            ? { ...r, rate: parseFloat(data.rate), updatedAt: data.updated_at }
+            : r
+        )
+      }));
+    } else {
+      const { data, error } = await supabase
+        .from('vehicle_rate_history')
+        .insert([{ vehicle_id: vehicleId, year, month, rate }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setState(prev => ({
+        ...prev,
+        vehicleRateHistory: [...prev.vehicleRateHistory, {
+          id: data.id,
+          vehicleId: data.vehicle_id,
+          year: data.year,
+          month: data.month,
+          rate: parseFloat(data.rate),
+          createdAt: data.created_at,
+          updatedAt: data.updated_at
+        }].sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
+      }));
+    }
+  };
+
+  const deleteVehicleRate = async (id: string) => {
+    const { error } = await supabase.from('vehicle_rate_history').delete().eq('id', id);
+    if (error) throw error;
+
+    setState(prev => ({
+      ...prev,
+      vehicleRateHistory: prev.vehicleRateHistory.filter(r => r.id !== id)
+    }));
+  };
+
   const generatePeriodReport = (personId: string, dateFrom: Date, dateTo: Date, periodLabel: string): PeriodReport | null => {
     const person = state.people.find(p => p.id === personId);
     if (!person) return null;
@@ -837,12 +928,11 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
 
     personTrips.forEach(trip => {
-      const vehicle = state.vehicles.find(v => v.id === trip.vehicleId);
-      if (vehicle) {
-        const tripDistance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-        totalDistance += tripDistance;
-        totalReimbursement += tripDistance * vehicle.reimbursementRate;
-      }
+      const tripDate = new Date(trip.date);
+      const rate = getVehicleRateForMonth(trip.vehicleId, tripDate.getFullYear(), tripDate.getMonth());
+      const tripDistance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+      totalDistance += tripDistance;
+      totalReimbursement += tripDistance * rate;
       if (trip.hasToll && trip.tollAmount) {
         totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
       }
@@ -981,12 +1071,10 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
 
     personTrips.forEach(trip => {
-      const vehicle = state.vehicles.find(v => v.id === trip.vehicleId);
-      if (vehicle) {
-        const tripDistance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-        totalDistance += tripDistance;
-        totalReimbursement += tripDistance * vehicle.reimbursementRate;
-      }
+      const rate = getVehicleRateForMonth(trip.vehicleId, year, month);
+      const tripDistance = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+      totalDistance += tripDistance;
+      totalReimbursement += tripDistance * rate;
       if (trip.hasToll && trip.tollAmount) {
         totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
       }
@@ -1023,6 +1111,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     addTripExpense, updateTripExpense, deleteTripExpense,
     addAccommodation, updateAccommodation, deleteAccommodation,
     addFavoriteDestination, updateFavoriteDestination, deleteFavoriteDestination,
+    upsertVehicleRate, deleteVehicleRate, getVehicleRateForMonth,
     generateMonthlyReport, generatePeriodReport,
     getPerson, getVehicle, getVehiclesForPerson,
     getSavedRoute, getRouteDistance,

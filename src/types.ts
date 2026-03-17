@@ -148,6 +148,16 @@ export interface FavoriteDestination {
   updatedAt: string;
 }
 
+export interface VehicleRateHistory {
+  id: string;
+  vehicleId: string;
+  year: number;
+  month: number;
+  rate: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface AppState {
   people: Person[];
   vehicles: Vehicle[];
@@ -157,6 +167,7 @@ export interface AppState {
   tripExpenses: TripExpense[];
   accommodations: Accommodation[];
   favoriteDestinations: FavoriteDestination[];
+  vehicleRateHistory: VehicleRateHistory[];
 }
 
 export interface UserProfile {
