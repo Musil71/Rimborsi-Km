@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, FileDown } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { useAppContext } from '../context/AppContext';
 
 const MONTHS = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
@@ -123,6 +125,100 @@ const VehicleRatesPage: React.FC = () => {
   const isMonthCurrent = (month: number) =>
     selectedYear === currentYear && month === new Date().getMonth();
 
+  const handleExportPDF = () => {
+    const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    const black: [number, number, number] = [30, 30, 30];
+    const darkGray: [number, number, number] = [80, 80, 80];
+    const lightGray: [number, number, number] = [240, 240, 240];
+    const medGray: [number, number, number] = [200, 200, 200];
+    const white: [number, number, number] = [255, 255, 255];
+
+    const pageW = doc.internal.pageSize.getWidth();
+    let y = 14;
+
+    doc.setFontSize(16);
+    doc.setTextColor(...black);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Tariffe €/km — ${selectedYear}`, pageW / 2, y, { align: 'center' });
+
+    y += 6;
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...darkGray);
+    doc.text('Da compilare a cura della segreteria', pageW / 2, y, { align: 'center' });
+
+    y += 8;
+
+    const head = [['Veicolo', 'Targa', ...MONTHS]];
+    const body = vehicles.map(vehicle => {
+      const person = getPerson(vehicle.personId);
+      const personName = person ? `${person.surname} ${person.name}` : 'N/D';
+      const vehicleLabel = `${personName}\n${vehicle.make} ${vehicle.model}`;
+      return [vehicleLabel, vehicle.plate, ...MONTHS.map(() => '')];
+    });
+
+    autoTable(doc, {
+      startY: y,
+      head,
+      body,
+      theme: 'grid',
+      headStyles: {
+        fillColor: lightGray,
+        textColor: black,
+        fontStyle: 'bold',
+        fontSize: 8,
+        lineColor: medGray,
+        lineWidth: 0.3,
+        halign: 'center',
+        valign: 'middle',
+        cellPadding: 2,
+      },
+      bodyStyles: {
+        fontSize: 8,
+        textColor: black,
+        lineColor: medGray,
+        lineWidth: 0.2,
+        minCellHeight: 10,
+        valign: 'middle',
+      },
+      columnStyles: {
+        0: { halign: 'left', cellWidth: 42, fontStyle: 'bold', fillColor: white },
+        1: { halign: 'center', cellWidth: 18, fillColor: white },
+        2: { halign: 'center', cellWidth: 'auto' },
+        3: { halign: 'center', cellWidth: 'auto' },
+        4: { halign: 'center', cellWidth: 'auto' },
+        5: { halign: 'center', cellWidth: 'auto' },
+        6: { halign: 'center', cellWidth: 'auto' },
+        7: { halign: 'center', cellWidth: 'auto' },
+        8: { halign: 'center', cellWidth: 'auto' },
+        9: { halign: 'center', cellWidth: 'auto' },
+        10: { halign: 'center', cellWidth: 'auto' },
+        11: { halign: 'center', cellWidth: 'auto' },
+        12: { halign: 'center', cellWidth: 'auto' },
+        13: { halign: 'center', cellWidth: 'auto' },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index >= 2) {
+          data.cell.styles.fillColor = white;
+        }
+      },
+      margin: { left: 10, right: 10 },
+    });
+
+    const totalPages = (doc as jsPDF & { internal: { getNumberOfPages: () => number } }).internal.getNumberOfPages();
+    const printDate = new Date().toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(7);
+      doc.setTextColor(...darkGray);
+      doc.text(`Stampato il ${printDate}`, 10, doc.internal.pageSize.getHeight() - 6);
+      doc.text(`Pagina ${i} di ${totalPages}`, pageW - 10, doc.internal.pageSize.getHeight() - 6, { align: 'right' });
+    }
+
+    doc.save(`tariffe-km-${selectedYear}.pdf`);
+  };
+
   const getEffectiveRate = (vehicleId: string, month: number): string => {
     const entry = state.vehicleRateHistory.find(
       r => r.vehicleId === vehicleId && r.year === selectedYear && r.month === month
@@ -144,6 +240,15 @@ const VehicleRatesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={handleExportPDF}
+            disabled={vehicles.length === 0}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <FileDown size={16} />
+            Stampa PDF
+          </button>
+
           <a
             href="https://costikm.aci.it/home"
             target="_blank"
