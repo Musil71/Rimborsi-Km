@@ -112,6 +112,23 @@ const VehicleRatesPage: React.FC = () => {
     }
   };
 
+  const hasPendingChanges = Object.keys(localValues).length > 0;
+
+  const handleSaveAll = useCallback(() => {
+    Object.entries(localValues).forEach(([key, value]) => {
+      // key format: `${vehicleId}-${year}-${month}` where vehicleId is a UUID (contains hyphens)
+      const lastDash = key.lastIndexOf('-');
+      const secondLastDash = key.lastIndexOf('-', lastDash - 1);
+      const vehicleId = key.substring(0, secondLastDash);
+      const month = parseInt(key.substring(lastDash + 1), 10);
+      if (debounceTimers.current[key]) {
+        clearTimeout(debounceTimers.current[key]);
+        delete debounceTimers.current[key];
+      }
+      saveCell(vehicleId, month, value);
+    });
+  }, [localValues, saveCell]);
+
   const getCellBorderClass = (vehicleId: string, month: number): string => {
     const key = cellKey(vehicleId, month);
     const status = cellStatuses[key];
