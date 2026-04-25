@@ -1,17 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MapPin, CreditCard as Edit, Trash2, PlusCircle, Banknote, Copy, User, Calendar, ArrowLeft, Route } from 'lucide-react';
+import {
+  MapPin, Edit, Trash2, PlusCircle, Banknote, Copy,
+  User, Calendar, ArrowLeft, Route
+} from 'lucide-react';
 import Button from '../components/Button';
 import Select from '../components/Select';
 import { useAppContext } from '../context/AppContext';
-import { useToast } from '../context/ToastContext';
 import { Trip } from '../types';
 
 const PersonTripsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { state, deleteTrip, getVehicle, formatDate } = useAppContext();
   const navigate = useNavigate();
-  const { showToast } = useToast();
 
   const [monthFilter, setMonthFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -71,7 +72,6 @@ const PersonTripsPage: React.FC = () => {
   };
 
   const handleDuplicate = (trip: Trip) => {
-    showToast('Trasferta duplicata — modifica i dati e salva', 'info');
     navigate('/tragitti/nuovo', { state: { duplicateTrip: trip } });
   };
 
@@ -134,7 +134,6 @@ const PersonTripsPage: React.FC = () => {
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
           />
-          <p className="text-xs text-gray-400 mt-1">Solo i mesi con trasferte</p>
         </div>
         <div className="w-full sm:w-52">
           <Select

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Copy, Plus, Trash2, Utensils, Receipt, Star, ChevronDown, ChevronRight } from 'lucide-react';
+import { Save, ArrowLeft, ExternalLink, MapPin, Calculator, Home, Info, Copy, Plus, Trash2, Utensils, Receipt, Star } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -114,9 +114,6 @@ const TripForm: React.FC = () => {
   const [tollAmount, setTollAmount] = useState<number | null>(null);
   const [matchedTollBooth, setMatchedTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
   const [matchedReturnTollBooth, setMatchedReturnTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
-  const [tollSectionOpen, setTollSectionOpen] = useState(false);
-  const [expensesSectionOpen, setExpensesSectionOpen] = useState(false);
-  const [mealsSectionOpen, setMealsSectionOpen] = useState(false);
 
   useEffect(() => {
     if (trip) {
@@ -153,9 +150,6 @@ const TripForm: React.FC = () => {
         meals: tripMealsToEntries(trip),
         travelExpenses: tripExpensesToEntries(trip.id),
       });
-      if (trip.hasToll) setTollSectionOpen(true);
-      if (tripExpensesToEntries(trip.id).length > 0) setExpensesSectionOpen(true);
-      if (tripMealsToEntries(trip).length > 0) setMealsSectionOpen(true);
     }
   }, [trip]);
 
@@ -209,8 +203,6 @@ const TripForm: React.FC = () => {
         meals: tripMealsToEntries(duplicateData),
         travelExpenses: [],
       });
-      if (duplicateData.hasToll) setTollSectionOpen(true);
-      if (tripMealsToEntries(duplicateData).length > 0) setMealsSectionOpen(true);
     }
   }, [isDuplicating]);
 
@@ -903,21 +895,7 @@ const TripForm: React.FC = () => {
             </label>
           </div>
 
-          <div className="border border-amber-200 rounded-lg mb-4 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setTollSectionOpen(o => !o)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-amber-50 hover:bg-amber-100 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2">
-                {tollSectionOpen ? <ChevronDown size={16} className="text-amber-600" /> : <ChevronRight size={16} className="text-amber-600" />}
-                <span className="text-sm font-medium text-amber-900">Pedaggi Autostradali</span>
-                {formData.hasToll && <span className="text-xs bg-amber-200 text-amber-800 px-2 py-0.5 rounded-full">Attivo</span>}
-              </div>
-              <span className="text-xs text-amber-600">{tollSectionOpen ? 'Riduci' : 'Espandi'}</span>
-            </button>
-            {tollSectionOpen && (
-            <div className="p-4 bg-amber-50 border-t border-amber-200">
+          <div className="bg-amber-50 p-4 rounded-lg border border-amber-100 mb-4">
             <div className="mb-3">
               <div className="flex items-center space-x-2">
                 <input
@@ -1005,8 +983,6 @@ const TripForm: React.FC = () => {
                 </div>
               </div>
             )}
-            </div>
-            )}
           </div>
 
           {formData.hasToll && formData.isRoundTrip && (
@@ -1085,28 +1061,12 @@ const TripForm: React.FC = () => {
             </div>
           )}
 
-          <div className="border border-gray-200 rounded-lg mb-4 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setExpensesSectionOpen(o => !o)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2">
-                {expensesSectionOpen ? <ChevronDown size={16} className="text-gray-500" /> : <ChevronRight size={16} className="text-gray-500" />}
-                <Receipt className="h-4 w-4 text-gray-500" />
-                <span className="text-sm font-medium text-gray-900">Spese di Trasporto</span>
-                <span className="text-xs text-gray-500">(treno, aereo, taxi, bus...)</span>
-                {formData.travelExpenses.length > 0 && (
-                  <span className="text-xs bg-gray-200 text-gray-700 px-2 py-0.5 rounded-full">{formData.travelExpenses.length}</span>
-                )}
-              </div>
-              <span className="text-xs text-gray-500">{expensesSectionOpen ? 'Riduci' : 'Espandi'}</span>
-            </button>
-            {expensesSectionOpen && (
-            <div className="p-4 bg-gray-50 border-t border-gray-200">
+          <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-gray-900">Aggiungi spese documentate</span>
+                <Receipt className="h-5 w-5 text-gray-600" />
+                <span className="text-sm font-medium text-gray-900">Spese di Trasporto</span>
+                <span className="text-xs text-gray-500">(treno, aereo, taxi, bus, parcheggio, altro)</span>
               </div>
               <Button
                 type="button"
@@ -1202,31 +1162,13 @@ const TripForm: React.FC = () => {
                 ))}
               </div>
             )}
-            </div>
-            )}
           </div>
 
-          <div className="border border-green-200 rounded-lg mb-4 overflow-hidden">
-            <button
-              type="button"
-              onClick={() => setMealsSectionOpen(o => !o)}
-              className="w-full flex items-center justify-between px-4 py-3 bg-green-50 hover:bg-green-100 transition-colors text-left"
-            >
-              <div className="flex items-center gap-2">
-                {mealsSectionOpen ? <ChevronDown size={16} className="text-green-600" /> : <ChevronRight size={16} className="text-green-600" />}
-                <Utensils className="h-4 w-4 text-green-600" />
-                <span className="text-sm font-medium text-green-900">Rimborso Pasti</span>
-                {formData.meals.length > 0 && (
-                  <span className="text-xs bg-green-200 text-green-800 px-2 py-0.5 rounded-full">{formData.meals.length}</span>
-                )}
-              </div>
-              <span className="text-xs text-green-600">{mealsSectionOpen ? 'Riduci' : 'Espandi'}</span>
-            </button>
-            {mealsSectionOpen && (
-            <div className="p-4 bg-green-50 border-t border-green-200">
+          <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center space-x-2">
-                <span className="text-sm font-medium text-green-900">Aggiungi pasti rimborsabili</span>
+                <Utensils className="h-5 w-5 text-green-600" />
+                <span className="text-sm font-medium text-green-900">Rimborso Pasti</span>
               </div>
               <Button
                 type="button"
@@ -1292,8 +1234,6 @@ const TripForm: React.FC = () => {
                   );
                 })}
               </div>
-            )}
-            </div>
             )}
           </div>
 

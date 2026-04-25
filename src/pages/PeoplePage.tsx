@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, CreditCard as Edit, Trash2, Search } from 'lucide-react';
+import { UserPlus, Edit, Trash2, Search } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Table from '../components/Table';
@@ -13,13 +13,7 @@ const PeoplePage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleDelete = (id: string) => {
-    const tripCount = state.trips.filter(t => t.personId === id).length;
-    const vehicleCount = state.vehicles.filter(v => v.personId === id).length;
-    const details = [];
-    if (vehicleCount > 0) details.push(`${vehicleCount} ${vehicleCount === 1 ? 'veicolo' : 'veicoli'}`);
-    if (tripCount > 0) details.push(`${tripCount} ${tripCount === 1 ? 'trasferta' : 'trasferte'}`);
-    const detailText = details.length > 0 ? ` Verranno eliminati anche: ${details.join(' e ')}.` : '';
-    if (window.confirm(`Sei sicuro di voler eliminare questa persona?${detailText}`)) {
+    if (window.confirm('Sei sicuro di voler eliminare questa persona? Verranno eliminati anche tutti i veicoli e i tragitti associati.')) {
       deletePerson(id);
     }
   };
