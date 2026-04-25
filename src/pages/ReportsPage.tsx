@@ -428,7 +428,7 @@ const ReportsPage: React.FC = () => {
           doc.text(monthGroup.label, 16, y + 4.2);
           y += 8;
 
-          const tripRows = monthGroup.trips.map(trip => {
+          const tripRows = [...monthGroup.trips].sort((a, b) => a.date.localeCompare(b.date)).map(trip => {
             const vehicle = getVehicle(trip.vehicleId);
             const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
             const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
@@ -438,7 +438,7 @@ const ReportsPage: React.FC = () => {
             const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
             const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
             return [
-              (() => { const d = new Date(trip.date); return `${d.getDate()}/${d.getMonth() + 1}`; })(),
+              (() => { const [y, m, d] = trip.date.split('-').map(Number); return `${d}/${m}`; })(),
               `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
               vehicle ? vehicle.plate : '-',
               `${dist.toFixed(1)} km`,
@@ -464,7 +464,7 @@ const ReportsPage: React.FC = () => {
         }
         y += 4;
       } else {
-        const tripRows = report.trips.map(trip => {
+        const tripRows = [...report.trips].sort((a, b) => a.date.localeCompare(b.date)).map(trip => {
           const vehicle = getVehicle(trip.vehicleId);
           const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
           const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
@@ -474,7 +474,7 @@ const ReportsPage: React.FC = () => {
           const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
           const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
           return [
-            (() => { const d = new Date(trip.date); return `${d.getDate()}/${d.getMonth() + 1}`; })(),
+            (() => { const [y, m, d] = trip.date.split('-').map(Number); return `${d}/${m}`; })(),
             `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
             vehicle ? vehicle.plate : '-',
             `${dist.toFixed(1)} km`,
@@ -1040,13 +1040,13 @@ const ReportsPage: React.FC = () => {
                           <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
                         </div>
                         <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
-                          <Table columns={tripColumns} data={monthGroup.trips} keyExtractor={t => t.id} />
+                          <Table columns={tripColumns} data={[...monthGroup.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <Table columns={tripColumns} data={report.trips} keyExtractor={t => t.id} />
+                  <Table columns={tripColumns} data={[...report.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
                 )}
               </div>
             )}
