@@ -797,6 +797,7 @@ const ReportsPage: React.FC = () => {
               {([
                 { value: 'mensile', label: 'Mensile' },
                 { value: 'trimestrale', label: 'Trimestrale' },
+                { value: 'quadrimestrale', label: 'Quadrimestrale' },
                 { value: 'semestrale', label: 'Semestrale' },
                 { value: 'personalizzato', label: 'Personalizzato' },
               ] as { value: ReportPeriodType; label: string }[]).map(opt => (
@@ -825,6 +826,13 @@ const ReportsPage: React.FC = () => {
           {periodType === 'trimestrale' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <Select id="quarter" label="Trimestre" options={quarterOptions} value={selectedQuarter} onChange={e => setSelectedQuarter(e.target.value)} />
+              <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
+            </div>
+          )}
+
+          {periodType === 'quadrimestrale' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Select id="quadrimester" label="Quadrimestre" options={quadrimesterOptions} value={selectedQuadrimester} onChange={e => setSelectedQuadrimester(e.target.value)} />
               <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
             </div>
           )}
