@@ -63,6 +63,12 @@ const ReportsPage: React.FC = () => {
     { value: '4', label: '4° Trimestre (Ott – Dic)' },
   ];
 
+  const quadrimesterOptions = [
+    { value: '1', label: '1° Quadrimestre (Gen – Apr)' },
+    { value: '2', label: '2° Quadrimestre (Mag – Ago)' },
+    { value: '3', label: '3° Quadrimestre (Set – Dic)' },
+  ];
+
   const semesterOptions = [
     { value: '1', label: '1° Semestre (Gen – Giu)' },
     { value: '2', label: '2° Semestre (Lug – Dic)' },
