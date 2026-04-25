@@ -31,6 +31,7 @@ const ReportsPage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [periodType, setPeriodType] = useState<ReportPeriodType>('mensile');
   const [selectedQuarter, setSelectedQuarter] = useState('1');
+  const [selectedQuadrimester, setSelectedQuadrimester] = useState('1');
   const [selectedSemester, setSelectedSemester] = useState('1');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
@@ -63,6 +64,12 @@ const ReportsPage: React.FC = () => {
     { value: '4', label: '4° Trimestre (Ott – Dic)' },
   ];
 
+  const quadrimesterOptions = [
+    { value: '1', label: '1° Quadrimestre (Gen – Apr)' },
+    { value: '2', label: '2° Quadrimestre (Mag – Ago)' },
+    { value: '3', label: '3° Quadrimestre (Set – Dic)' },
+  ];
+
   const semesterOptions = [
     { value: '1', label: '1° Semestre (Gen – Giu)' },
     { value: '2', label: '2° Semestre (Lug – Dic)' },
@@ -88,6 +95,18 @@ const ReportsPage: React.FC = () => {
       dateFrom: new Date(year, startMonth, 1),
       dateTo: new Date(year, endMonth + 1, 0),
       label: `${quarter}° Trimestre ${year} (${MONTH_NAMES_IT[startMonth]} – ${MONTH_NAMES_IT[endMonth]})`
+    };
+  };
+
+  const getQuadrimesterRange = (q: number, year: number): { dateFrom: Date; dateTo: Date; label: string } => {
+    const starts = [0, 4, 8];
+    const ends = [3, 7, 11];
+    const startMonth = starts[q - 1];
+    const endMonth = ends[q - 1];
+    return {
+      dateFrom: new Date(year, startMonth, 1),
+      dateTo: new Date(year, endMonth + 1, 0),
+      label: `${q}° Quadrimestre ${year} (${MONTH_NAMES_IT[startMonth]} – ${MONTH_NAMES_IT[endMonth]})`
     };
   };
 
@@ -173,6 +192,9 @@ const ReportsPage: React.FC = () => {
       rawReport = generateMonthlyReport(selectedPerson, parseInt(selectedMonth), year);
     } else if (periodType === 'trimestrale') {
       const { dateFrom, dateTo, label } = getQuarterRange(parseInt(selectedQuarter), year);
+      rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
+    } else if (periodType === 'quadrimestrale') {
+      const { dateFrom, dateTo, label } = getQuadrimesterRange(parseInt(selectedQuadrimester), year);
       rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
     } else if (periodType === 'semestrale') {
       const { dateFrom, dateTo, label } = getSemesterRange(parseInt(selectedSemester), year);
@@ -627,9 +649,11 @@ const ReportsPage: React.FC = () => {
       ? `${MONTH_NAMES_IT[parseInt(selectedMonth)].toLowerCase()}-${selectedYear}`
       : periodType === 'trimestrale'
         ? `T${selectedQuarter}-${selectedYear}`
-        : periodType === 'semestrale'
-          ? `S${selectedSemester}-${selectedYear}`
-          : `${customDateFrom}_${customDateTo}`;
+        : periodType === 'quadrimestrale'
+          ? `Q${selectedQuadrimester}-${selectedYear}`
+          : periodType === 'semestrale'
+            ? `S${selectedSemester}-${selectedYear}`
+            : `${customDateFrom}_${customDateTo}`;
 
     doc.save(`nota-spese_${person.surname.toLowerCase()}_${suffix}.pdf`);
   };
@@ -797,6 +821,7 @@ const ReportsPage: React.FC = () => {
               {([
                 { value: 'mensile', label: 'Mensile' },
                 { value: 'trimestrale', label: 'Trimestrale' },
+                { value: 'quadrimestrale', label: 'Quadrimestrale' },
                 { value: 'semestrale', label: 'Semestrale' },
                 { value: 'personalizzato', label: 'Personalizzato' },
               ] as { value: ReportPeriodType; label: string }[]).map(opt => (
@@ -825,6 +850,13 @@ const ReportsPage: React.FC = () => {
           {periodType === 'trimestrale' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <Select id="quarter" label="Trimestre" options={quarterOptions} value={selectedQuarter} onChange={e => setSelectedQuarter(e.target.value)} />
+              <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
+            </div>
+          )}
+
+          {periodType === 'quadrimestrale' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+              <Select id="quadrimester" label="Quadrimestre" options={quadrimesterOptions} value={selectedQuadrimester} onChange={e => setSelectedQuadrimester(e.target.value)} />
               <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
             </div>
           )}

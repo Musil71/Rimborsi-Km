@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, FileDown } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, FileDown, Save, AlertCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAppContext } from '../context/AppContext';
@@ -89,6 +89,24 @@ const VehicleRatesPage: React.FC = () => {
       setCellStatus(key, 'error');
     }
   }, [state.vehicleRateHistory, selectedYear, upsertVehicleRate, setCellStatus]);
+
+  const pendingCount = Object.keys(localValues).filter(key => {
+    const v = localValues[key];
+    return v !== undefined && v.trim() !== '';
+  }).length;
+
+  const handleSaveAll = useCallback(async () => {
+    const entries = Object.entries(localValues).filter(([, v]) => v !== undefined && v.trim() !== '');
+    await Promise.all(
+      entries.map(([key]) => {
+        const parts = key.split('-');
+        const month = parseInt(parts[parts.length - 1]);
+        const year = parseInt(parts[parts.length - 2]);
+        const vehicleId = parts.slice(0, parts.length - 2).join('-');
+        return saveCell(vehicleId, month, localValues[key]);
+      })
+    );
+  }, [localValues, saveCell]);
 
   const handleChange = (vehicleId: string, month: number, value: string) => {
     const key = cellKey(vehicleId, month);
@@ -240,6 +258,20 @@ const VehicleRatesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
+          {pendingCount > 0 && (
+            <div className="flex items-center gap-1.5 text-amber-600 text-sm">
+              <AlertCircle size={15} />
+              <span className="font-medium">{pendingCount} non salvat{pendingCount === 1 ? 'o' : 'i'}</span>
+            </div>
+          )}
+          <button
+            onClick={handleSaveAll}
+            disabled={pendingCount === 0}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Save size={16} />
+            Salva tutto
+          </button>
           <button
             onClick={handleExportPDF}
             disabled={vehicles.length === 0}
