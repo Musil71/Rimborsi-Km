@@ -1034,19 +1034,35 @@ const ReportsPage: React.FC = () => {
 
                 {multiMonth && reportDateFrom && reportDateTo ? (
                   <div className="space-y-4">
-                    {getTripsByMonth(report.trips, reportDateFrom, reportDateTo).map(monthGroup => (
-                      <div key={`${monthGroup.year}-${monthGroup.month}`}>
-                        <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200">
-                          <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
+                    {getTripsByMonth(report.trips, reportDateFrom, reportDateTo).map(monthGroup => {
+                      const monthKmTotal = monthGroup.trips.reduce((sum, trip) => {
+                        const vehicle = getVehicle(trip.vehicleId);
+                        if (!vehicle) return sum;
+                        const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+                        return sum + d * vehicle.reimbursementRate;
+                      }, 0);
+                      return (
+                        <div key={`${monthGroup.year}-${monthGroup.month}`}>
+                          <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200 flex items-center justify-between">
+                            <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
+                            <span className="text-sm font-semibold text-teal-700">Rimborso km: {monthKmTotal.toFixed(2)} €</span>
+                          </div>
+                          <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+                            <Table columns={tripColumns} data={[...monthGroup.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
+                          </div>
                         </div>
-                        <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
-                          <Table columns={tripColumns} data={[...monthGroup.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 ) : (
-                  <Table columns={tripColumns} data={[...report.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
+                  <>
+                    <Table columns={tripColumns} data={[...report.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
+                    <div className="mt-2 flex justify-end">
+                      <span className="text-sm font-semibold text-teal-700 bg-teal-50 border border-teal-100 rounded px-3 py-1">
+                        Rimborso km: {report.totalReimbursement.toFixed(2)} €
+                      </span>
+                    </div>
+                  </>
                 )}
               </div>
             )}
