@@ -1041,11 +1041,21 @@ const ReportsPage: React.FC = () => {
                         const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
                         return sum + d * vehicle.reimbursementRate;
                       }, 0);
+                      const uniqueRates = [...new Set(
+                        monthGroup.trips
+                          .map(t => getVehicle(t.vehicleId)?.reimbursementRate)
+                          .filter((r): r is number => r !== undefined)
+                      )].sort((a, b) => a - b);
                       return (
                         <div key={`${monthGroup.year}-${monthGroup.month}`}>
                           <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200 flex items-center justify-between">
                             <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
-                            <span className="text-sm font-semibold text-teal-700">Rimborso km: {monthKmTotal.toFixed(2)} €</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-xs text-gray-500">
+                                {uniqueRates.map(r => `${r.toFixed(4)} €/km`).join(' · ')}
+                              </span>
+                              <span className="text-sm font-semibold text-teal-700">Rimborso km: {monthKmTotal.toFixed(2)} €</span>
+                            </div>
                           </div>
                           <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
                             <Table columns={tripColumns} data={[...monthGroup.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
@@ -1057,7 +1067,19 @@ const ReportsPage: React.FC = () => {
                 ) : (
                   <>
                     <Table columns={tripColumns} data={[...report.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
-                    <div className="mt-2 flex justify-end">
+                    <div className="mt-2 flex justify-end items-center gap-3">
+                      {(() => {
+                        const uniqueRates = [...new Set(
+                          report.trips
+                            .map(t => getVehicle(t.vehicleId)?.reimbursementRate)
+                            .filter((r): r is number => r !== undefined)
+                        )].sort((a, b) => a - b);
+                        return uniqueRates.length > 0 ? (
+                          <span className="text-xs text-gray-500">
+                            {uniqueRates.map(r => `${r.toFixed(4)} €/km`).join(' · ')}
+                          </span>
+                        ) : null;
+                      })()}
                       <span className="text-sm font-semibold text-teal-700 bg-teal-50 border border-teal-100 rounded px-3 py-1">
                         Rimborso km: {report.totalReimbursement.toFixed(2)} €
                       </span>
