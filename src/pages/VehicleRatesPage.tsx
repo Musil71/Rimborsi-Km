@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, FileDown, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAppContext } from '../context/AppContext';
@@ -219,24 +219,6 @@ const VehicleRatesPage: React.FC = () => {
     doc.save(`tariffe-km-${selectedYear}.pdf`);
   };
 
-  const handleSaveAll = useCallback(async () => {
-    const promises = Object.entries(localValues).map(([key, value]) => {
-      const parts = key.split('-');
-      const month = parseInt(parts[parts.length - 1], 10);
-      const year = parseInt(parts[parts.length - 2], 10);
-      const vehicleId = parts.slice(0, parts.length - 2).join('-');
-      if (year !== selectedYear) return Promise.resolve();
-      return saveCell(vehicleId, month, value);
-    });
-    await Promise.all(promises);
-  }, [localValues, selectedYear, saveCell]);
-
-  const hasPendingChanges = Object.keys(localValues).some(key => {
-    const parts = key.split('-');
-    const year = parseInt(parts[parts.length - 2], 10);
-    return year === selectedYear;
-  });
-
   const getEffectiveRate = (vehicleId: string, month: number): string => {
     const entry = state.vehicleRateHistory.find(
       r => r.vehicleId === vehicleId && r.year === selectedYear && r.month === month
@@ -258,15 +240,6 @@ const VehicleRatesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleSaveAll}
-            disabled={!hasPendingChanges}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Save size={16} />
-            Salva tutto
-          </button>
-
           <button
             onClick={handleExportPDF}
             disabled={vehicles.length === 0}

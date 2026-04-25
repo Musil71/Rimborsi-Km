@@ -31,7 +31,6 @@ const ReportsPage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [periodType, setPeriodType] = useState<ReportPeriodType>('mensile');
   const [selectedQuarter, setSelectedQuarter] = useState('1');
-  const [selectedQuadrimester, setSelectedQuadrimester] = useState('1');
   const [selectedSemester, setSelectedSemester] = useState('1');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
@@ -64,12 +63,6 @@ const ReportsPage: React.FC = () => {
     { value: '4', label: '4° Trimestre (Ott – Dic)' },
   ];
 
-  const quadrimesterOptions = [
-    { value: '1', label: '1° Quadrimestre (Gen – Apr)' },
-    { value: '2', label: '2° Quadrimestre (Mag – Ago)' },
-    { value: '3', label: '3° Quadrimestre (Set – Dic)' },
-  ];
-
   const semesterOptions = [
     { value: '1', label: '1° Semestre (Gen – Giu)' },
     { value: '2', label: '2° Semestre (Lug – Dic)' },
@@ -95,18 +88,6 @@ const ReportsPage: React.FC = () => {
       dateFrom: new Date(year, startMonth, 1),
       dateTo: new Date(year, endMonth + 1, 0),
       label: `${quarter}° Trimestre ${year} (${MONTH_NAMES_IT[startMonth]} – ${MONTH_NAMES_IT[endMonth]})`
-    };
-  };
-
-  const getQuadrimesterRange = (quadrimester: number, year: number): { dateFrom: Date; dateTo: Date; label: string } => {
-    const starts = [0, 4, 8];
-    const ends = [3, 7, 11];
-    const startMonth = starts[quadrimester - 1];
-    const endMonth = ends[quadrimester - 1];
-    return {
-      dateFrom: new Date(year, startMonth, 1),
-      dateTo: new Date(year, endMonth + 1, 0),
-      label: `${quadrimester}° Quadrimestre ${year} (${MONTH_NAMES_IT[startMonth]} – ${MONTH_NAMES_IT[endMonth]})`
     };
   };
 
@@ -192,9 +173,6 @@ const ReportsPage: React.FC = () => {
       rawReport = generateMonthlyReport(selectedPerson, parseInt(selectedMonth), year);
     } else if (periodType === 'trimestrale') {
       const { dateFrom, dateTo, label } = getQuarterRange(parseInt(selectedQuarter), year);
-      rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
-    } else if (periodType === 'quadrimestrale') {
-      const { dateFrom, dateTo, label } = getQuadrimesterRange(parseInt(selectedQuadrimester), year);
       rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
     } else if (periodType === 'semestrale') {
       const { dateFrom, dateTo, label } = getSemesterRange(parseInt(selectedSemester), year);
@@ -428,7 +406,7 @@ const ReportsPage: React.FC = () => {
           doc.text(monthGroup.label, 16, y + 4.2);
           y += 8;
 
-          const tripRows = [...monthGroup.trips].sort((a, b) => a.date.localeCompare(b.date)).map(trip => {
+          const tripRows = monthGroup.trips.map(trip => {
             const vehicle = getVehicle(trip.vehicleId);
             const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
             const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
@@ -438,7 +416,7 @@ const ReportsPage: React.FC = () => {
             const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
             const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
             return [
-              (() => { const [y, m, d] = trip.date.split('-').map(Number); return `${d}/${m}`; })(),
+              (() => { const d = new Date(trip.date); return `${d.getDate()}/${d.getMonth() + 1}`; })(),
               `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
               vehicle ? vehicle.plate : '-',
               `${dist.toFixed(1)} km`,
@@ -464,7 +442,7 @@ const ReportsPage: React.FC = () => {
         }
         y += 4;
       } else {
-        const tripRows = [...report.trips].sort((a, b) => a.date.localeCompare(b.date)).map(trip => {
+        const tripRows = report.trips.map(trip => {
           const vehicle = getVehicle(trip.vehicleId);
           const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
           const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
@@ -474,7 +452,7 @@ const ReportsPage: React.FC = () => {
           const meal = mealTotal > 0 ? `${mealTotal.toFixed(2)} € (${getMealsLabel(trip)})` : '-';
           const tripRole = trip.tripRole ? (roleLabels[trip.tripRole] ?? trip.tripRole) : '-';
           return [
-            (() => { const [y, m, d] = trip.date.split('-').map(Number); return `${d}/${m}`; })(),
+            (() => { const d = new Date(trip.date); return `${d.getDate()}/${d.getMonth() + 1}`; })(),
             `${trip.origin} -> ${trip.destination}${trip.isRoundTrip ? ' (A/R)' : ''}`,
             vehicle ? vehicle.plate : '-',
             `${dist.toFixed(1)} km`,
@@ -649,11 +627,9 @@ const ReportsPage: React.FC = () => {
       ? `${MONTH_NAMES_IT[parseInt(selectedMonth)].toLowerCase()}-${selectedYear}`
       : periodType === 'trimestrale'
         ? `T${selectedQuarter}-${selectedYear}`
-        : periodType === 'quadrimestrale'
-          ? `Q${selectedQuadrimester}-${selectedYear}`
-          : periodType === 'semestrale'
-            ? `S${selectedSemester}-${selectedYear}`
-            : `${customDateFrom}_${customDateTo}`;
+        : periodType === 'semestrale'
+          ? `S${selectedSemester}-${selectedYear}`
+          : `${customDateFrom}_${customDateTo}`;
 
     doc.save(`nota-spese_${person.surname.toLowerCase()}_${suffix}.pdf`);
   };
@@ -821,7 +797,6 @@ const ReportsPage: React.FC = () => {
               {([
                 { value: 'mensile', label: 'Mensile' },
                 { value: 'trimestrale', label: 'Trimestrale' },
-                { value: 'quadrimestrale', label: 'Quadrimestrale' },
                 { value: 'semestrale', label: 'Semestrale' },
                 { value: 'personalizzato', label: 'Personalizzato' },
               ] as { value: ReportPeriodType; label: string }[]).map(opt => (
@@ -850,13 +825,6 @@ const ReportsPage: React.FC = () => {
           {periodType === 'trimestrale' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
               <Select id="quarter" label="Trimestre" options={quarterOptions} value={selectedQuarter} onChange={e => setSelectedQuarter(e.target.value)} />
-              <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
-            </div>
-          )}
-
-          {periodType === 'quadrimestrale' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <Select id="quadrimester" label="Quadrimestre" options={quadrimesterOptions} value={selectedQuadrimester} onChange={e => setSelectedQuadrimester(e.target.value)} />
               <Select id="year" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
             </div>
           )}
@@ -1034,57 +1002,19 @@ const ReportsPage: React.FC = () => {
 
                 {multiMonth && reportDateFrom && reportDateTo ? (
                   <div className="space-y-4">
-                    {getTripsByMonth(report.trips, reportDateFrom, reportDateTo).map(monthGroup => {
-                      const monthKmTotal = monthGroup.trips.reduce((sum, trip) => {
-                        const vehicle = getVehicle(trip.vehicleId);
-                        if (!vehicle) return sum;
-                        const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-                        return sum + d * vehicle.reimbursementRate;
-                      }, 0);
-                      const uniqueRates = [...new Set(
-                        monthGroup.trips
-                          .map(t => getVehicle(t.vehicleId)?.reimbursementRate)
-                          .filter((r): r is number => r !== undefined)
-                      )].sort((a, b) => a - b);
-                      return (
-                        <div key={`${monthGroup.year}-${monthGroup.month}`}>
-                          <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200 flex items-center justify-between">
-                            <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
-                            <div className="flex items-center gap-3">
-                              <span className="text-xs text-gray-500">
-                                {uniqueRates.map(r => `${r.toFixed(4)} €/km`).join(' · ')}
-                              </span>
-                              <span className="text-sm font-semibold text-teal-700">Rimborso km: {monthKmTotal.toFixed(2)} €</span>
-                            </div>
-                          </div>
-                          <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
-                            <Table columns={tripColumns} data={[...monthGroup.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
-                          </div>
+                    {getTripsByMonth(report.trips, reportDateFrom, reportDateTo).map(monthGroup => (
+                      <div key={`${monthGroup.year}-${monthGroup.month}`}>
+                        <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200">
+                          <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
                         </div>
-                      );
-                    })}
+                        <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
+                          <Table columns={tripColumns} data={monthGroup.trips} keyExtractor={t => t.id} />
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 ) : (
-                  <>
-                    <Table columns={tripColumns} data={[...report.trips].sort((a, b) => a.date.localeCompare(b.date))} keyExtractor={t => t.id} />
-                    <div className="mt-2 flex justify-end items-center gap-3">
-                      {(() => {
-                        const uniqueRates = [...new Set(
-                          report.trips
-                            .map(t => getVehicle(t.vehicleId)?.reimbursementRate)
-                            .filter((r): r is number => r !== undefined)
-                        )].sort((a, b) => a - b);
-                        return uniqueRates.length > 0 ? (
-                          <span className="text-xs text-gray-500">
-                            {uniqueRates.map(r => `${r.toFixed(4)} €/km`).join(' · ')}
-                          </span>
-                        ) : null;
-                      })()}
-                      <span className="text-sm font-semibold text-teal-700 bg-teal-50 border border-teal-100 rounded px-3 py-1">
-                        Rimborso km: {report.totalReimbursement.toFixed(2)} €
-                      </span>
-                    </div>
-                  </>
+                  <Table columns={tripColumns} data={report.trips} keyExtractor={t => t.id} />
                 )}
               </div>
             )}

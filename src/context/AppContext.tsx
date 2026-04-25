@@ -1045,8 +1045,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const formatDate = (dateString: string) => {
-    const [y, m, d] = dateString.split('-').map(Number);
-    return format(new Date(y, m - 1, d), 'dd MMMM yyyy', { locale: it });
+    return format(new Date(dateString), 'dd MMMM yyyy', { locale: it });
   };
 
   const generateMonthlyReport = (personId: string, month: number, year: number): MonthlyReport | null => {
