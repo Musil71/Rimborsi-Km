@@ -258,15 +258,14 @@ const VehicleRatesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          {hasPendingChanges && (
-            <button
-              onClick={handleSaveAll}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm"
-            >
-              <Save size={16} />
-              Salva tutto
-            </button>
-          )}
+          <button
+            onClick={handleSaveAll}
+            disabled={!hasPendingChanges}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Save size={16} />
+            Salva tutto
+          </button>
 
           <button
             onClick={handleExportPDF}
