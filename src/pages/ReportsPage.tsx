@@ -31,6 +31,7 @@ const ReportsPage: React.FC = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [periodType, setPeriodType] = useState<ReportPeriodType>('mensile');
   const [selectedQuarter, setSelectedQuarter] = useState('1');
+  const [selectedQuadrimester, setSelectedQuadrimester] = useState('1');
   const [selectedSemester, setSelectedSemester] = useState('1');
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
@@ -94,6 +95,18 @@ const ReportsPage: React.FC = () => {
       dateFrom: new Date(year, startMonth, 1),
       dateTo: new Date(year, endMonth + 1, 0),
       label: `${quarter}° Trimestre ${year} (${MONTH_NAMES_IT[startMonth]} – ${MONTH_NAMES_IT[endMonth]})`
+    };
+  };
+
+  const getQuadrimesterRange = (quadrimester: number, year: number): { dateFrom: Date; dateTo: Date; label: string } => {
+    const starts = [0, 4, 8];
+    const ends = [3, 7, 11];
+    const startMonth = starts[quadrimester - 1];
+    const endMonth = ends[quadrimester - 1];
+    return {
+      dateFrom: new Date(year, startMonth, 1),
+      dateTo: new Date(year, endMonth + 1, 0),
+      label: `${quadrimester}° Quadrimestre ${year} (${MONTH_NAMES_IT[startMonth]} – ${MONTH_NAMES_IT[endMonth]})`
     };
   };
 
@@ -179,6 +192,9 @@ const ReportsPage: React.FC = () => {
       rawReport = generateMonthlyReport(selectedPerson, parseInt(selectedMonth), year);
     } else if (periodType === 'trimestrale') {
       const { dateFrom, dateTo, label } = getQuarterRange(parseInt(selectedQuarter), year);
+      rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
+    } else if (periodType === 'quadrimestrale') {
+      const { dateFrom, dateTo, label } = getQuadrimesterRange(parseInt(selectedQuadrimester), year);
       rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
     } else if (periodType === 'semestrale') {
       const { dateFrom, dateTo, label } = getSemesterRange(parseInt(selectedSemester), year);
@@ -633,9 +649,11 @@ const ReportsPage: React.FC = () => {
       ? `${MONTH_NAMES_IT[parseInt(selectedMonth)].toLowerCase()}-${selectedYear}`
       : periodType === 'trimestrale'
         ? `T${selectedQuarter}-${selectedYear}`
-        : periodType === 'semestrale'
-          ? `S${selectedSemester}-${selectedYear}`
-          : `${customDateFrom}_${customDateTo}`;
+        : periodType === 'quadrimestrale'
+          ? `Q${selectedQuadrimester}-${selectedYear}`
+          : periodType === 'semestrale'
+            ? `S${selectedSemester}-${selectedYear}`
+            : `${customDateFrom}_${customDateTo}`;
 
     doc.save(`nota-spese_${person.surname.toLowerCase()}_${suffix}.pdf`);
   };
