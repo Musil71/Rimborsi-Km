@@ -45,6 +45,7 @@ const ReportsPage: React.FC = () => {
   const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
   const [noDataFound, setNoDataFound] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [tripSortOrder, setTripSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i.toString(),
@@ -227,7 +228,12 @@ const ReportsPage: React.FC = () => {
       : [];
 
     const destinationFiltered = applyDestinationFilter(rawReport, selectedAddresses, destinationFilterMode);
-    const finalReport = applyTripRoleFilter(destinationFiltered, selectedTripRole);
+    const roleFiltered = applyTripRoleFilter(destinationFiltered, selectedTripRole);
+    const sortedTrips = [...roleFiltered.trips].sort((a, b) => {
+      const diff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      return tripSortOrder === 'asc' ? diff : -diff;
+    });
+    const finalReport = { ...roleFiltered, trips: sortedTrips };
     setReport(finalReport);
   };
 
@@ -945,6 +951,32 @@ const ReportsPage: React.FC = () => {
               )}
             </div>
           )}
+
+          <div className="mb-4 flex items-center gap-3">
+            <label className="text-sm font-medium text-gray-700">Ordine trasferte:</label>
+            <div className="flex rounded-lg border border-gray-300 overflow-hidden text-sm">
+              <button
+                onClick={() => setTripSortOrder('asc')}
+                className={`px-3 py-1.5 font-medium transition-colors ${
+                  tripSortOrder === 'asc'
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Piu' vecchie prima
+              </button>
+              <button
+                onClick={() => setTripSortOrder('desc')}
+                className={`px-3 py-1.5 font-medium border-l border-gray-300 transition-colors ${
+                  tripSortOrder === 'desc'
+                    ? 'bg-teal-600 text-white'
+                    : 'bg-white text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                Piu' recenti prima
+              </button>
+            </div>
+          </div>
 
           <Button
             variant="primary"
