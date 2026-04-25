@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Home, Users, Map, BarChart3, Menu, X, LogOut, Plus, Receipt, BedDouble, Star, Gauge } from 'lucide-react';
 import { useState } from 'react';
@@ -16,6 +16,10 @@ const Layout: React.FC = () => {
   const isActive = (path: string) => {
     return location.pathname === path;
   };
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [location.pathname]);
 
   const toggleMenu = () => {
     setMenuOpen(!menuOpen);

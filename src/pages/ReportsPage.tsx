@@ -46,6 +46,7 @@ const ReportsPage: React.FC = () => {
   const [noDataFound, setNoDataFound] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [tripSortOrder, setTripSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i.toString(),
@@ -182,9 +183,18 @@ const ReportsPage: React.FC = () => {
     return { ...reportData, trips: filteredTrips, totalDistance, totalReimbursement, totalTollFees, totalMealReimbursement };
   };
 
+  const applyMonthPreset = (offset: number) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() + offset);
+    setSelectedMonth(d.getMonth().toString());
+    setSelectedYear(d.getFullYear().toString());
+    setPeriodType('mensile');
+  };
+
   const handleGenerateReport = () => {
     if (!selectedPerson) return;
 
+    setIsGenerating(true);
     setNoDataFound(false);
     const year = parseInt(selectedYear);
     let rawReport: AnyReport | null = null;
@@ -211,6 +221,7 @@ const ReportsPage: React.FC = () => {
     if (!rawReport) {
       setReport(null);
       setNoDataFound(true);
+      setIsGenerating(false);
       return;
     }
 
@@ -235,6 +246,7 @@ const ReportsPage: React.FC = () => {
     });
     const finalReport = { ...roleFiltered, trips: sortedTrips };
     setReport(finalReport);
+    setIsGenerating(false);
   };
 
   const handleEditSaved = () => {
@@ -821,6 +833,22 @@ const ReportsPage: React.FC = () => {
             />
           </div>
 
+          <div className="mb-4 flex items-center gap-2">
+            <span className="text-sm text-gray-500">Accesso rapido:</span>
+            <button
+              onClick={() => applyMonthPreset(0)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-teal-300 text-teal-700 bg-teal-50 hover:bg-teal-100 transition-colors"
+            >
+              Mese corrente
+            </button>
+            <button
+              onClick={() => applyMonthPreset(-1)}
+              className="px-3 py-1.5 rounded-lg text-xs font-medium border border-gray-300 text-gray-600 bg-white hover:bg-gray-50 transition-colors"
+            >
+              Mese scorso
+            </button>
+          </div>
+
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">Tipo di Periodo</label>
             <div className="flex flex-wrap gap-3">
@@ -980,11 +1008,11 @@ const ReportsPage: React.FC = () => {
 
           <Button
             variant="primary"
-            icon={<FileText size={18} />}
+            icon={isGenerating ? undefined : <FileText size={18} />}
             onClick={handleGenerateReport}
-            disabled={!selectedPerson || (periodType === 'personalizzato' && (!customDateFrom || !customDateTo))}
+            disabled={isGenerating || !selectedPerson || (periodType === 'personalizzato' && (!customDateFrom || !customDateTo))}
           >
-            Genera Report
+            {isGenerating ? 'Generazione...' : 'Genera Report'}
           </Button>
         </div>
 
