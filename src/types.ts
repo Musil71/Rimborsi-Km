@@ -95,7 +95,7 @@ export interface Accommodation {
   createdAt: string;
 }
 
-export type ReportPeriodType = 'mensile' | 'trimestrale' | 'semestrale' | 'personalizzato';
+export type ReportPeriodType = 'mensile' | 'trimestrale' | 'quadrimestrale' | 'semestrale' | 'personalizzato';
 
 export interface MonthlyReport {
   month: number;
