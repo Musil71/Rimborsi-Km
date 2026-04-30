@@ -823,7 +823,23 @@ const ReportsPage: React.FC = () => {
                 })
               ]}
               value={selectedPerson}
-              onChange={e => setSelectedPerson(e.target.value)}
+              onChange={e => {
+                const personId = e.target.value;
+                setSelectedPerson(personId);
+                if (personId) {
+                  const person = state.people.find(p => p.id === personId);
+                  if (person) {
+                    const roles = [
+                      person.isDocente && 'docente',
+                      person.isAmministratore && 'amministratore',
+                      person.isDipendente && 'dipendente',
+                    ].filter(Boolean) as string[];
+                    setSelectedTripRole(roles.length === 1 ? roles[0] : 'all');
+                  }
+                } else {
+                  setSelectedTripRole('all');
+                }
+              }}
             />
             <Select
               id="tripRole"
