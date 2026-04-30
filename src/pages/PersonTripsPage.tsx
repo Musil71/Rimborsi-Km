@@ -183,88 +183,136 @@ const PersonTripsPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {filteredTrips.map(trip => {
-            const vehicle = getVehicle(trip.vehicleId);
-            const km = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-            const outboundToll = trip.hasToll && trip.tollAmount ? trip.tollAmount : null;
-            const returnToll = trip.hasToll && trip.isRoundTrip
-              ? (trip.returnTollAmount ?? trip.tollAmount ?? null)
-              : null;
-            const totalTripToll = (outboundToll ?? 0) + (returnToll ?? 0);
+        <div className="space-y-6">
+          {(() => {
+            const grouped = !monthFilter
+              ? filteredTrips.reduce<{ key: string; label: string; trips: typeof filteredTrips }[]>((acc, trip) => {
+                  const d = new Date(trip.date);
+                  const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+                  const label = `${d.toLocaleString('it-IT', { month: 'long' })} ${d.getFullYear()}`;
+                  const existing = acc.find(g => g.key === key);
+                  if (existing) { existing.trips.push(trip); }
+                  else { acc.push({ key, label, trips: [trip] }); }
+                  return acc;
+                }, [])
+              : [{ key: monthFilter, label: '', trips: filteredTrips }];
 
-            return (
-              <div
-                key={trip.id}
-                className="rounded-xl border border-gray-200 bg-white px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 hover:border-gray-300 transition-colors"
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <span className="flex items-center gap-1.5 text-xs text-gray-500">
-                      <Calendar size={12} />
-                      {formatDate(trip.date)}
-                    </span>
-                    {vehicle && (
-                      <span className="text-xs text-gray-400">
-                        {vehicle.make} {vehicle.model}
-                      </span>
-                    )}
-                    {trip.isRoundTrip && (
-                      <span className="text-xs font-medium text-teal-600 bg-teal-50 border border-teal-100 rounded px-1.5 py-0.5">
-                        A/R
-                      </span>
-                    )}
+            return grouped.map(group => {
+              const groupKm = group.trips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
+              const groupToll = group.trips.reduce((sum, t) => {
+                if (!t.hasToll) return sum;
+                return sum + (t.tollAmount ?? 0) + (t.isRoundTrip ? (t.returnTollAmount ?? t.tollAmount ?? 0) : 0);
+              }, 0);
+
+              return (
+                <div key={group.key}>
+                  {!monthFilter && (
+                    <div className="flex items-center justify-between mb-3 px-1">
+                      <div className="flex items-center gap-3">
+                        <h3 className="text-sm font-semibold text-gray-700 capitalize">{group.label}</h3>
+                        <span className="text-xs text-gray-400">{group.trips.length} {group.trips.length === 1 ? 'trasferta' : 'trasferte'}</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-1 text-xs font-medium text-teal-700">
+                          <MapPin size={11} className="text-teal-500" />
+                          {groupKm.toFixed(0)} km
+                        </span>
+                        {groupToll > 0 && (
+                          <span className="flex items-center gap-1 text-xs font-medium text-amber-700">
+                            <Banknote size={11} />
+                            {groupToll.toFixed(2)} €
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  <div className="space-y-2">
+                    {group.trips.map(trip => {
+                      const vehicle = getVehicle(trip.vehicleId);
+                      const km = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+                      const outboundToll = trip.hasToll && trip.tollAmount ? trip.tollAmount : null;
+                      const returnToll = trip.hasToll && trip.isRoundTrip
+                        ? (trip.returnTollAmount ?? trip.tollAmount ?? null)
+                        : null;
+                      const totalTripToll = (outboundToll ?? 0) + (returnToll ?? 0);
+
+                      return (
+                        <div
+                          key={trip.id}
+                          className="rounded-xl border border-gray-200 bg-white px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 hover:border-gray-300 transition-colors"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-3 flex-wrap">
+                              <span className="flex items-center gap-1.5 text-xs text-gray-500">
+                                <Calendar size={12} />
+                                {formatDate(trip.date)}
+                              </span>
+                              {vehicle && (
+                                <span className="text-xs text-gray-400">
+                                  {vehicle.make} {vehicle.model}
+                                </span>
+                              )}
+                              {trip.isRoundTrip && (
+                                <span className="text-xs font-medium text-teal-600 bg-teal-50 border border-teal-100 rounded px-1.5 py-0.5">
+                                  A/R
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-sm font-semibold text-gray-800 mt-1.5">
+                              {trip.origin} &rarr; {trip.destination}
+                            </p>
+                            {trip.purpose && (
+                              <p className="text-xs text-gray-500 mt-0.5 truncate">{trip.purpose}</p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-5 flex-shrink-0 text-sm">
+                            <span className="flex items-center gap-1 text-gray-700 font-medium">
+                              <MapPin size={13} className="text-teal-500" />
+                              {km.toFixed(1)} km
+                            </span>
+                            {totalTripToll > 0 && (
+                              <span className="flex items-center gap-1 text-amber-700">
+                                <Banknote size={13} />
+                                {totalTripToll.toFixed(2)} €
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <button
+                              title="Modifica"
+                              onClick={() => navigate(`/tragitti/${trip.id}`)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 border border-blue-100 hover:bg-blue-50 transition-colors"
+                            >
+                              <Edit size={13} />
+                              Modifica
+                            </button>
+                            <button
+                              title="Duplica"
+                              onClick={() => handleDuplicate(trip)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 border border-gray-200 hover:bg-gray-100 transition-colors"
+                            >
+                              <Copy size={13} />
+                              Duplica
+                            </button>
+                            <button
+                              title="Elimina"
+                              onClick={() => handleDelete(trip.id)}
+                              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 border border-red-100 hover:bg-red-50 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                              Elimina
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <p className="text-sm font-semibold text-gray-800 mt-1.5">
-                    {trip.origin} &rarr; {trip.destination}
-                  </p>
-                  {trip.purpose && (
-                    <p className="text-xs text-gray-500 mt-0.5 truncate">{trip.purpose}</p>
-                  )}
                 </div>
-
-                <div className="flex items-center gap-5 flex-shrink-0 text-sm">
-                  <span className="flex items-center gap-1 text-gray-700 font-medium">
-                    <MapPin size={13} className="text-teal-500" />
-                    {km.toFixed(1)} km
-                  </span>
-                  {totalTripToll > 0 && (
-                    <span className="flex items-center gap-1 text-amber-700">
-                      <Banknote size={13} />
-                      {totalTripToll.toFixed(2)} €
-                    </span>
-                  )}
-                </div>
-
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <button
-                    title="Modifica"
-                    onClick={() => navigate(`/tragitti/${trip.id}`)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-blue-600 border border-blue-100 hover:bg-blue-50 transition-colors"
-                  >
-                    <Edit size={13} />
-                    Modifica
-                  </button>
-                  <button
-                    title="Duplica"
-                    onClick={() => handleDuplicate(trip)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-500 border border-gray-200 hover:bg-gray-100 transition-colors"
-                  >
-                    <Copy size={13} />
-                    Duplica
-                  </button>
-                  <button
-                    title="Elimina"
-                    onClick={() => handleDelete(trip.id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-red-500 border border-red-100 hover:bg-red-50 transition-colors"
-                  >
-                    <Trash2 size={13} />
-                    Elimina
-                  </button>
-                </div>
-              </div>
-            );
-          })}
+              );
+            });
+          })()}
         </div>
       )}
     </div>
