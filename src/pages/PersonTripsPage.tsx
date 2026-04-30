@@ -183,7 +183,7 @@ const PersonTripsPage: React.FC = () => {
           </p>
         </div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-3">
           {(() => {
             const grouped = !monthFilter
               ? filteredTrips.reduce<{ key: string; label: string; trips: typeof filteredTrips }[]>((acc, trip) => {
@@ -197,17 +197,21 @@ const PersonTripsPage: React.FC = () => {
                 }, [])
               : [{ key: monthFilter, label: '', trips: filteredTrips }];
 
-            return grouped.map(group => {
+            const sectionBg = ['bg-white', 'bg-slate-50'];
+
+            return grouped.map((group, groupIdx) => {
               const groupKm = group.trips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
               const groupToll = group.trips.reduce((sum, t) => {
                 if (!t.hasToll) return sum;
                 return sum + (t.tollAmount ?? 0) + (t.isRoundTrip ? (t.returnTollAmount ?? t.tollAmount ?? 0) : 0);
               }, 0);
+              const bg = sectionBg[groupIdx % 2];
+              const cardBorder = groupIdx % 2 === 0 ? 'border-gray-200' : 'border-slate-200';
 
               return (
-                <div key={group.key}>
+                <div key={group.key} className={`rounded-2xl ${bg} px-4 pt-3 pb-4 border border-transparent`}>
                   {!monthFilter && (
-                    <div className="flex items-center justify-between mb-3 px-1">
+                    <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <h3 className="text-sm font-semibold text-gray-700 capitalize">{group.label}</h3>
                         <span className="text-xs text-gray-400">{group.trips.length} {group.trips.length === 1 ? 'trasferta' : 'trasferte'}</span>
@@ -239,7 +243,7 @@ const PersonTripsPage: React.FC = () => {
                       return (
                         <div
                           key={trip.id}
-                          className="rounded-xl border border-gray-200 bg-white px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 hover:border-gray-300 transition-colors"
+                          className={`rounded-xl border ${cardBorder} bg-white px-5 py-4 flex flex-col sm:flex-row sm:items-center gap-3 hover:border-gray-300 transition-colors`}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-3 flex-wrap">
