@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink, FileDown, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ExternalLink, FileDown } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAppContext } from '../context/AppContext';
@@ -111,23 +111,6 @@ const VehicleRatesPage: React.FC = () => {
       saveCell(vehicleId, month, value);
     }
   };
-
-  const hasPendingChanges = Object.keys(localValues).length > 0;
-
-  const handleSaveAll = useCallback(() => {
-    Object.entries(localValues).forEach(([key, value]) => {
-      // key format: `${vehicleId}-${year}-${month}` — vehicleId is a UUID (has hyphens)
-      const lastDash = key.lastIndexOf('-');
-      const secondLastDash = key.lastIndexOf('-', lastDash - 1);
-      const vehicleId = key.substring(0, secondLastDash);
-      const month = parseInt(key.substring(lastDash + 1), 10);
-      if (debounceTimers.current[key]) {
-        clearTimeout(debounceTimers.current[key]);
-        delete debounceTimers.current[key];
-      }
-      saveCell(vehicleId, month, value);
-    });
-  }, [localValues, saveCell]);
 
   const getCellBorderClass = (vehicleId: string, month: number): string => {
     const key = cellKey(vehicleId, month);
@@ -257,15 +240,6 @@ const VehicleRatesPage: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleSaveAll}
-            disabled={!hasPendingChanges}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-teal-600 border border-teal-600 rounded-lg hover:bg-teal-700 transition-colors shadow-sm disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Save size={16} />
-            Salva tutto
-          </button>
-
           <button
             onClick={handleExportPDF}
             disabled={vehicles.length === 0}
