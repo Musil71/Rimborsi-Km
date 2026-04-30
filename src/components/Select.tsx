@@ -12,6 +12,7 @@ interface SelectProps extends SelectHTMLAttributes<HTMLSelectElement> {
   error?: string;
   fullWidth?: boolean;
   id: string;
+  placeholder?: string;
 }
 
 const Select: React.FC<SelectProps> = ({
@@ -21,6 +22,7 @@ const Select: React.FC<SelectProps> = ({
   fullWidth = true,
   className,
   id,
+  placeholder,
   ...props
 }) => {
   return (
@@ -39,7 +41,7 @@ const Select: React.FC<SelectProps> = ({
         )}
         {...props}
       >
-        <option value="">Seleziona...</option>
+        <option value="">{placeholder ?? 'Seleziona...'}</option>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}

@@ -39,7 +39,7 @@ const ReportsPage: React.FC = () => {
   const [filterDocenti, setFilterDocenti] = useState(true);
   const [filterAmministratori, setFilterAmministratori] = useState(true);
   const [filterDipendenti, setFilterDipendenti] = useState(true);
-  const [selectedTripRole, setSelectedTripRole] = useState<string>('all');
+  const [selectedTripRole, setSelectedTripRole] = useState<string>('');
   const [selectedFavDestinations, setSelectedFavDestinations] = useState<string[]>([]);
   const [destinationFilterMode, setDestinationFilterMode] = useState<'include' | 'exclude'>('include');
   const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
@@ -160,7 +160,7 @@ const ReportsPage: React.FC = () => {
   };
 
   const applyTripRoleFilter = (reportData: AnyReport, role: string): AnyReport => {
-    if (role === 'all') return reportData;
+    if (!role) return reportData;
 
     const filteredTrips = reportData.trips.filter(t => t.tripRole === role);
     let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
@@ -355,7 +355,7 @@ const ReportsPage: React.FC = () => {
     doc.setTextColor(...black);
     doc.text('NOTA SPESE DI TRASFERTA', 14, 16);
 
-    const roleLabel = selectedTripRole !== 'all' ? roleLabels[selectedTripRole] : null;
+    const roleLabel = selectedTripRole ? roleLabels[selectedTripRole] : null;
     const destLabel = selectedFavDestinations.length > 0
       ? (destinationFilterMode === 'exclude' ? 'Escl.: ' : '') +
         state.favoriteDestinations
@@ -834,18 +834,18 @@ const ReportsPage: React.FC = () => {
                       person.isAmministratore && 'amministratore',
                       person.isDipendente && 'dipendente',
                     ].filter(Boolean) as string[];
-                    setSelectedTripRole(roles.length === 1 ? roles[0] : 'all');
+                    setSelectedTripRole(roles.length === 1 ? roles[0] : '');
                   }
                 } else {
-                  setSelectedTripRole('all');
+                  setSelectedTripRole('');
                 }
               }}
             />
             <Select
               id="tripRole"
               label="Filtra per Ruolo Trasferta"
+              placeholder="Tutti i ruoli"
               options={[
-                { value: 'all', label: 'Tutti i ruoli' },
                 { value: 'docente', label: 'Solo Docente' },
                 { value: 'amministratore', label: 'Solo Amministratore' },
                 { value: 'dipendente', label: 'Solo Dipendente' }
@@ -1005,7 +1005,7 @@ const ReportsPage: React.FC = () => {
         {report && (
           <div className="border-t border-gray-200 pt-6 space-y-6">
 
-            {multiRoleInfo?.hasMultipleRoles && selectedTripRole === 'all' && (
+            {multiRoleInfo?.hasMultipleRoles && !selectedTripRole && (
               <div className="bg-amber-50 border-l-4 border-amber-400 p-4 rounded">
                 <div className="flex items-start">
                   <AlertTriangle className="h-5 w-5 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
@@ -1028,7 +1028,7 @@ const ReportsPage: React.FC = () => {
                   <h2 className="text-lg font-medium text-gray-900">
                     {getPerson(report.personId)?.name} {getPerson(report.personId)?.surname}
                   </h2>
-                  {selectedTripRole !== 'all' && getRoleBadge(selectedTripRole)}
+                  {selectedTripRole && getRoleBadge(selectedTripRole)}
                 </div>
                 <p className="text-sm text-gray-600">{getReportPeriodLabel(report)}</p>
               </div>
