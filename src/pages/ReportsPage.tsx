@@ -431,7 +431,14 @@ const ReportsPage: React.FC = () => {
           doc.setTextColor(...darkGray);
           doc.setFillColor(...sectionGray);
           doc.rect(14, y, 182, 6, 'F');
-          doc.text(monthGroup.label, 16, y + 4.2);
+          const firstTripInGroup = monthGroup.trips[0];
+          const monthRatePdf = firstTripInGroup
+            ? getVehicleRateForMonth(firstTripInGroup.vehicleId, monthGroup.year, monthGroup.month)
+            : null;
+          const monthLabelPdf = monthRatePdf !== null
+            ? `${monthGroup.label}  (${monthRatePdf.toFixed(4)} €/km)`
+            : monthGroup.label;
+          doc.text(monthLabelPdf, 16, y + 4.2);
           y += 8;
 
           const tripRows = monthGroup.trips.map(trip => {
@@ -439,7 +446,7 @@ const ReportsPage: React.FC = () => {
             const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
             const td = new Date(trip.date);
             const rate = getVehicleRateForMonth(trip.vehicleId, td.getFullYear(), td.getMonth());
-            const kmReimb = vehicle ? `${(dist * rate).toFixed(2)} € (${rate.toFixed(4)} €/km)` : '-';
+            const kmReimb = vehicle ? `${(dist * rate).toFixed(2)} €` : '-';
             const toll = trip.hasToll && trip.tollAmount
               ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount).toFixed(2) + ' €' : '-';
             const mealTotal = getMealsTotal(trip);
@@ -472,12 +479,23 @@ const ReportsPage: React.FC = () => {
         }
         y += 4;
       } else {
-        const tripRows = sortTripsChronological(report.trips).map(trip => {
+        const singleMonthTrips = sortTripsChronological(report.trips);
+        const firstSingleTrip = singleMonthTrips[0];
+        if (firstSingleTrip) {
+          const td0 = new Date(firstSingleTrip.date);
+          const singleRatePdf = getVehicleRateForMonth(firstSingleTrip.vehicleId, td0.getFullYear(), td0.getMonth());
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...darkGray);
+          doc.text(`Tariffa applicata: ${singleRatePdf.toFixed(4)} €/km`, 196, y, { align: 'right' });
+          y += 5;
+        }
+        const tripRows = singleMonthTrips.map(trip => {
           const vehicle = getVehicle(trip.vehicleId);
           const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
           const td = new Date(trip.date);
           const rate = getVehicleRateForMonth(trip.vehicleId, td.getFullYear(), td.getMonth());
-          const kmReimb = vehicle ? `${(dist * rate).toFixed(2)} € (${rate.toFixed(4)} €/km)` : '-';
+          const kmReimb = vehicle ? `${(dist * rate).toFixed(2)} €` : '-';
           const toll = trip.hasToll && trip.tollAmount
             ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount).toFixed(2) + ' €' : '-';
           const mealTotal = getMealsTotal(trip);
@@ -692,15 +710,9 @@ const ReportsPage: React.FC = () => {
       header: 'Veicolo',
       render: (trip: Trip) => {
         const vehicle = getVehicle(trip.vehicleId);
-        if (!vehicle) return <span className="text-red-500">N/D</span>;
-        const d = new Date(trip.date);
-        const rate = getVehicleRateForMonth(trip.vehicleId, d.getFullYear(), d.getMonth());
-        return (
-          <div className="flex flex-col">
-            <span>{vehicle.make} {vehicle.model} ({vehicle.plate})</span>
-            <span className="text-xs text-gray-500">{rate.toFixed(4)} €/km</span>
-          </div>
-        );
+        return vehicle ? (
+          <span>{vehicle.make} {vehicle.model} ({vehicle.plate})</span>
+        ) : <span className="text-red-500">N/D</span>;
       },
     },
     {
@@ -1046,20 +1058,42 @@ const ReportsPage: React.FC = () => {
 
                 {multiMonth && reportDateFrom && reportDateTo ? (
                   <div className="space-y-4">
-                    {getTripsByMonth(report.trips, reportDateFrom, reportDateTo).map(monthGroup => (
+                    {getTripsByMonth(report.trips, reportDateFrom, reportDateTo).map(monthGroup => {
+                      const firstTrip = monthGroup.trips[0];
+                      const monthRate = firstTrip
+                        ? getVehicleRateForMonth(firstTrip.vehicleId, monthGroup.year, monthGroup.month)
+                        : null;
+                      return (
                       <div key={`${monthGroup.year}-${monthGroup.month}`}>
-                        <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200">
+                        <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200 flex items-center justify-between">
                           <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
+                          {monthRate !== null && (
+                            <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded px-2 py-0.5">{monthRate.toFixed(4)} €/km</span>
+                          )}
                         </div>
                         <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
                           <Table columns={tripColumns} data={monthGroup.trips} keyExtractor={t => t.id} />
                         </div>
                       </div>
-                    ))}
+                    );})}
                   </div>
-                ) : (
-                  <Table columns={tripColumns} data={sortTripsChronological(report.trips)} keyExtractor={t => t.id} />
-                )}
+                ) : (() => {
+                  const sortedTrips = sortTripsChronological(report.trips);
+                  const firstTrip = sortedTrips[0];
+                  const singleRate = firstTrip
+                    ? getVehicleRateForMonth(firstTrip.vehicleId, new Date(firstTrip.date).getFullYear(), new Date(firstTrip.date).getMonth())
+                    : null;
+                  return (
+                    <div>
+                      {singleRate !== null && (
+                        <div className="flex justify-end mb-2">
+                          <span className="text-xs font-medium text-gray-500 bg-gray-100 border border-gray-200 rounded px-2 py-0.5">{singleRate.toFixed(4)} €/km</span>
+                        </div>
+                      )}
+                      <Table columns={tripColumns} data={sortedTrips} keyExtractor={t => t.id} />
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
