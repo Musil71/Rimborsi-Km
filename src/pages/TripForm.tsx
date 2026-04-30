@@ -579,7 +579,7 @@ const TripForm: React.FC = () => {
     }
 
     const returnPersonId = (location.state as any)?.returnPersonId;
-    navigate(returnPersonId ? `/persone/${returnPersonId}/trasferte` : '/tragitti');
+    navigate(returnPersonId ? `/tragitti/persona/${returnPersonId}` : '/tragitti');
   };
 
   const canCalculateDistance = formData.origin.trim() && formData.destination.trim();
