@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { MapPin, CreditCard as Edit, Trash2, PlusCircle, Banknote, Copy, User, Calendar, ArrowLeft, Route, ArrowDownUp } from 'lucide-react';
+import { MapPin, CreditCard as Edit, Trash2, PlusCircle, Banknote, Copy, User, Calendar, ArrowLeft, Route, ArrowDownUp, Euro } from 'lucide-react';
 import Button from '../components/Button';
 import Select from '../components/Select';
 import { useAppContext } from '../context/AppContext';
@@ -8,7 +8,7 @@ import { Trip } from '../types';
 
 const PersonTripsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const { state, deleteTrip, getVehicle, formatDate } = useAppContext();
+  const { state, deleteTrip, getVehicle, formatDate, getVehicleRateForMonth } = useAppContext();
   const navigate = useNavigate();
 
   const [monthFilter, setMonthFilter] = useState('');
@@ -67,6 +67,13 @@ const PersonTripsPage: React.FC = () => {
     const returnToll = t.isRoundTrip ? (t.returnTollAmount ?? t.tollAmount ?? 0) : 0;
     return sum + outbound + returnToll;
   }, 0);
+  const totalKmReimbursement = filteredTrips.reduce((sum, t) => {
+    const d = new Date(t.date);
+    const rate = getVehicleRateForMonth(t.vehicleId, d.getFullYear(), d.getMonth());
+    const dist = t.isRoundTrip ? t.distance * 2 : t.distance;
+    return sum + dist * rate;
+  }, 0);
+  const totalReimbursement = totalKmReimbursement + totalToll;
 
   const handleDelete = (tripId: string) => {
     if (window.confirm('Sei sicuro di voler eliminare questa trasferta?')) {
@@ -171,6 +178,10 @@ const PersonTripsPage: React.FC = () => {
                 <span className="font-medium text-gray-800">{totalToll.toFixed(2)} €</span> pedaggi
               </span>
             )}
+            <span className="flex items-center gap-1.5 font-semibold text-green-700 bg-green-50 border border-green-200 rounded-full px-3 py-1">
+              <Euro size={13} />
+              {totalReimbursement.toFixed(2)} totale
+            </span>
           </div>
         )}
       </div>
@@ -205,6 +216,13 @@ const PersonTripsPage: React.FC = () => {
                 if (!t.hasToll) return sum;
                 return sum + (t.tollAmount ?? 0) + (t.isRoundTrip ? (t.returnTollAmount ?? t.tollAmount ?? 0) : 0);
               }, 0);
+              const groupKmReimbursement = group.trips.reduce((sum, t) => {
+                const d = new Date(t.date);
+                const rate = getVehicleRateForMonth(t.vehicleId, d.getFullYear(), d.getMonth());
+                const dist = t.isRoundTrip ? t.distance * 2 : t.distance;
+                return sum + dist * rate;
+              }, 0);
+              const groupTotal = groupKmReimbursement + groupToll;
               const bg = sectionBg[groupIdx % 2];
               const cardBorder = groupIdx % 2 === 0 ? 'border-blue-100' : 'border-teal-100';
 
@@ -227,6 +245,10 @@ const PersonTripsPage: React.FC = () => {
                             {groupToll.toFixed(2)} €
                           </span>
                         )}
+                        <span className="flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-100 border border-green-200 rounded-full px-2 py-0.5">
+                          <Euro size={10} />
+                          {groupTotal.toFixed(2)}
+                        </span>
                       </div>
                     </div>
                   )}
