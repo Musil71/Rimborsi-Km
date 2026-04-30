@@ -87,7 +87,7 @@ const TripForm: React.FC = () => {
     date: new Date().toISOString().split('T')[0],
     personId: '',
     vehicleId: '',
-    tripRole: 'dipendente',
+    tripRole: 'docente',
     origin: DEFAULT_OFFICE.address,
     destination: '',
     distance: '',
@@ -132,7 +132,7 @@ const TripForm: React.FC = () => {
         date: new Date(trip.date).toISOString().split('T')[0],
         personId: trip.personId,
         vehicleId: trip.vehicleId,
-        tripRole: trip.tripRole || 'dipendente',
+        tripRole: trip.tripRole || 'docente',
         origin: trip.origin,
         destination: trip.destination,
         distance: trip.distance.toString(),
@@ -185,7 +185,7 @@ const TripForm: React.FC = () => {
         date: new Date().toISOString().split('T')[0],
         personId: duplicateData.personId,
         vehicleId: duplicateData.vehicleId,
-        tripRole: duplicateData.tripRole || 'dipendente',
+        tripRole: duplicateData.tripRole || 'docente',
         origin: duplicateData.origin,
         destination: duplicateData.destination,
         distance: duplicateData.distance.toString(),
@@ -315,6 +315,7 @@ const TripForm: React.FC = () => {
     }
 
     const roles: { value: Role; label: string; }[] = [];
+    if (person.isDocente) roles.push({ value: 'docente', label: 'Docente' });
     if (person.isAmministratore) roles.push({ value: 'amministratore', label: 'Amministratore' });
     if (person.isDipendente) roles.push({ value: 'dipendente', label: 'Dipendente' });
 
@@ -634,6 +635,7 @@ const TripForm: React.FC = () => {
               label="Persona"
               options={[...state.people].sort((a, b) => a.surname.localeCompare(b.surname) || a.name.localeCompare(b.name)).map(p => {
                 const roles = [];
+                if (p.isDocente) roles.push('D');
                 if (p.isAmministratore) roles.push('A');
                 if (p.isDipendente) roles.push('Dip');
                 return {

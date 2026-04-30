@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserPlus, CreditCard as Edit, Trash2, Search } from 'lucide-react';
+import { UserPlus, Edit, Trash2, Search } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Table from '../components/Table';
@@ -23,6 +23,7 @@ const PeoplePage: React.FC = () => {
       (person) =>
         person.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         person.surname.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (searchTerm.toLowerCase().includes('docent') && person.isDocente) ||
         (searchTerm.toLowerCase().includes('amministrat') && person.isAmministratore) ||
         (searchTerm.toLowerCase().includes('dipendent') && person.isDipendente)
     )
@@ -41,6 +42,11 @@ const PeoplePage: React.FC = () => {
       header: 'Ruoli',
       render: (person: Person) => (
         <div className="flex flex-wrap gap-1">
+          {person.isDocente && (
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-800">
+              Docente
+            </span>
+          )}
           {person.isAmministratore && (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
               Amministratore

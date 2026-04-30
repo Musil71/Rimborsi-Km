@@ -36,6 +36,7 @@ const ReportsPage: React.FC = () => {
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
   const [report, setReport] = useState<AnyReport | null>(null);
+  const [filterDocenti, setFilterDocenti] = useState(true);
   const [filterAmministratori, setFilterAmministratori] = useState(true);
   const [filterDipendenti, setFilterDipendenti] = useState(true);
   const [selectedTripRole, setSelectedTripRole] = useState<string>('all');
@@ -90,8 +91,9 @@ const ReportsPage: React.FC = () => {
 
   const filteredPeople = state.people
     .filter(person => {
-      if (!filterAmministratori && !filterDipendenti) return true;
+      if (!filterDocenti && !filterAmministratori && !filterDipendenti) return true;
       return (
+        (filterDocenti && person.isDocente) ||
         (filterAmministratori && person.isAmministratore) ||
         (filterDipendenti && person.isDipendente)
       );
@@ -214,7 +216,7 @@ const ReportsPage: React.FC = () => {
       return;
     }
 
-    const roleCounts: Record<string, number> = { amministratore: 0, dipendente: 0 };
+    const roleCounts: Record<string, number> = { docente: 0, amministratore: 0, dipendente: 0 };
     rawReport.trips.forEach((trip: Trip) => {
       if (trip.tripRole) roleCounts[trip.tripRole] = (roleCounts[trip.tripRole] || 0) + 1;
     });
@@ -290,6 +292,7 @@ const ReportsPage: React.FC = () => {
   const getRoleBadge = (role?: string) => {
     if (!role) return null;
     const cfg: Record<string, { label: string; bg: string; text: string }> = {
+      docente: { label: 'Docente', bg: 'bg-teal-100', text: 'text-teal-700' },
       amministratore: { label: 'Amministratore', bg: 'bg-blue-100', text: 'text-blue-700' },
       dipendente: { label: 'Dipendente', bg: 'bg-gray-100', text: 'text-gray-700' }
     };
@@ -338,6 +341,7 @@ const ReportsPage: React.FC = () => {
     const sectionGray: [number, number, number] = [220, 220, 220];
 
     const roleLabels: Record<string, string> = {
+      docente: 'Docente',
       amministratore: 'Amministratore',
       dipendente: 'Dipendente',
     };
@@ -787,6 +791,7 @@ const ReportsPage: React.FC = () => {
             <label className="block text-sm font-medium text-gray-700 mb-2">Filtra persone per Ruolo</label>
             <div className="flex flex-wrap gap-4">
               {[
+                { key: 'filterDocenti', value: filterDocenti, set: setFilterDocenti, label: 'Docenti' },
                 { key: 'filterAmministratori', value: filterAmministratori, set: setFilterAmministratori, label: 'Amministratori' },
                 { key: 'filterDipendenti', value: filterDipendenti, set: setFilterDipendenti, label: 'Dipendenti' },
               ].map(item => (
@@ -811,6 +816,7 @@ const ReportsPage: React.FC = () => {
                 { value: '', label: 'Seleziona...' },
                 ...filteredPeople.map(p => {
                   const roles = [];
+                  if (p.isDocente) roles.push('D');
                   if (p.isAmministratore) roles.push('A');
                   if (p.isDipendente) roles.push('Dip');
                   return { value: p.id, label: `${p.surname} ${p.name} (${roles.join(', ')})` };
@@ -824,6 +830,7 @@ const ReportsPage: React.FC = () => {
               label="Filtra per Ruolo Trasferta"
               options={[
                 { value: 'all', label: 'Tutti i ruoli' },
+                { value: 'docente', label: 'Solo Docente' },
                 { value: 'amministratore', label: 'Solo Amministratore' },
                 { value: 'dipendente', label: 'Solo Dipendente' }
               ]}
@@ -989,6 +996,7 @@ const ReportsPage: React.FC = () => {
                   <div>
                     <h3 className="text-sm font-medium text-amber-800 mb-1">Trasferte in Piu' Ruoli Rilevate</h3>
                     <ul className="text-sm text-amber-700 list-disc list-inside mb-2">
+                      {multiRoleInfo.roleCounts.docente > 0 && <li><strong>{multiRoleInfo.roleCounts.docente}</strong> trasferte come <strong>Docente</strong></li>}
                       {multiRoleInfo.roleCounts.amministratore > 0 && <li><strong>{multiRoleInfo.roleCounts.amministratore}</strong> trasferte come <strong>Amministratore</strong></li>}
                       {multiRoleInfo.roleCounts.dipendente > 0 && <li><strong>{multiRoleInfo.roleCounts.dipendente}</strong> trasferte come <strong>Dipendente</strong></li>}
                     </ul>

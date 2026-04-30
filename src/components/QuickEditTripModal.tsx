@@ -14,6 +14,7 @@ interface QuickEditTripModalProps {
 }
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
+  { value: 'docente', label: 'Docente' },
   { value: 'amministratore', label: 'Amministratore' },
   { value: 'dipendente', label: 'Dipendente' },
 ];
