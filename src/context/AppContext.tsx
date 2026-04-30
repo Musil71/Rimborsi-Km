@@ -96,7 +96,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         id: p.id,
         name: p.name,
         surname: p.surname || '',
-        isDocente: p.is_docente || false,
         isAmministratore: p.is_amministratore || false,
         isDipendente: p.is_dipendente || false
       }));
@@ -237,7 +236,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .insert([{
         name: person.name,
         surname: person.surname,
-        is_docente: person.isDocente,
         is_amministratore: person.isAmministratore,
         is_dipendente: person.isDipendente
       }])
@@ -252,7 +250,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         id: data.id,
         name: data.name,
         surname: data.surname,
-        isDocente: data.is_docente || false,
         isAmministratore: data.is_amministratore || false,
         isDipendente: data.is_dipendente || false
       }, ...prev.people]
@@ -265,7 +262,6 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       .update({
         name: person.name,
         surname: person.surname,
-        is_docente: person.isDocente,
         is_amministratore: person.isAmministratore,
         is_dipendente: person.isDipendente
       })

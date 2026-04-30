@@ -1,4 +1,4 @@
-export type Role = 'docente' | 'dipendente' | 'amministratore';
+export type Role = 'dipendente' | 'amministratore';
 
 export type ExpenseType = 'treno' | 'supplemento_treno' | 'aereo' | 'mezzi_pubblici' | 'taxi' | 'parcheggio' | 'altro';
 
@@ -6,7 +6,6 @@ export interface Person {
   id: string;
   name: string;
   surname: string;
-  isDocente: boolean;
   isAmministratore: boolean;
   isDipendente: boolean;
 }
