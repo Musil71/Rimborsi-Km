@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Plus, CreditCard as Edit, Trash2, Car } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Edit, Trash2, Car } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface PersonFormData {
   name: string;
   surname: string;
+  isDocente: boolean;
   isAmministratore: boolean;
   isDipendente: boolean;
 }
@@ -50,6 +51,7 @@ const PersonForm: React.FC = () => {
   const [personFormData, setPersonFormData] = useState<PersonFormData>({
     name: '',
     surname: '',
+    isDocente: false,
     isAmministratore: false,
     isDipendente: false,
   });
@@ -71,6 +73,7 @@ const PersonForm: React.FC = () => {
       setPersonFormData({
         name: person.name,
         surname: person.surname,
+        isDocente: person.isDocente,
         isAmministratore: person.isAmministratore,
         isDipendente: person.isDipendente,
       });
@@ -153,6 +156,7 @@ const PersonForm: React.FC = () => {
     const personData = {
       name: personFormData.name,
       surname: personFormData.surname,
+      isDocente: personFormData.isDocente,
       isAmministratore: personFormData.isAmministratore,
       isDipendente: personFormData.isDipendente,
     };
@@ -314,6 +318,16 @@ const PersonForm: React.FC = () => {
               Ruoli <span className="text-red-500">*</span>
             </label>
             <div className="space-y-3">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isDocente"
+                  checked={personFormData.isDocente}
+                  onChange={handlePersonChange}
+                  className="h-4 w-4 text-teal-600 focus:ring-teal-500 border-gray-300 rounded"
+                />
+                <span className="ml-2 text-sm text-gray-700">Docente</span>
+              </label>
               <label className="flex items-center">
                 <input
                   type="checkbox"

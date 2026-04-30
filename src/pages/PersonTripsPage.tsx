@@ -42,6 +42,7 @@ const PersonTripsPage: React.FC = () => {
 
   const roleOptions = [
     { value: '', label: 'Tutti i ruoli' },
+    { value: 'docente', label: 'Docente' },
     { value: 'dipendente', label: 'Dipendente' },
     { value: 'amministratore', label: 'Amministratore' },
   ];
