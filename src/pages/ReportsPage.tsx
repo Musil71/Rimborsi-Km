@@ -24,7 +24,7 @@ function isPeriodReport(r: AnyReport): r is PeriodReport {
 }
 
 const ReportsPage: React.FC = () => {
-  const { state, generateMonthlyReport, generatePeriodReport, getPerson, getVehicle, formatDate } = useAppContext();
+  const { state, generateMonthlyReport, generatePeriodReport, getPerson, getVehicle, getVehicleRateForMonth, formatDate } = useAppContext();
 
   const [selectedPerson, setSelectedPerson] = useState('');
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth().toString());
@@ -127,6 +127,13 @@ const ReportsPage: React.FC = () => {
     };
   };
 
+  const calcTripReimbursement = (trip: Trip): number => {
+    const d = new Date(trip.date);
+    const rate = getVehicleRateForMonth(trip.vehicleId, d.getFullYear(), d.getMonth());
+    const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+    return dist * rate;
+  };
+
   const applyDestinationFilter = (reportData: AnyReport, destinations: string[], mode: 'include' | 'exclude'): AnyReport => {
     if (destinations.length === 0) return reportData;
     const filteredTrips = reportData.trips.filter(t =>
@@ -134,12 +141,9 @@ const ReportsPage: React.FC = () => {
     );
     let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
     filteredTrips.forEach(trip => {
-      const vehicle = getVehicle(trip.vehicleId);
-      if (vehicle) {
-        const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-        totalDistance += d;
-        totalReimbursement += d * vehicle.reimbursementRate;
-      }
+      const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+      totalDistance += d;
+      totalReimbursement += calcTripReimbursement(trip);
       if (trip.hasToll && trip.tollAmount) {
         totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
       }
@@ -161,12 +165,9 @@ const ReportsPage: React.FC = () => {
     const filteredTrips = reportData.trips.filter(t => t.tripRole === role);
     let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
     filteredTrips.forEach(trip => {
-      const vehicle = getVehicle(trip.vehicleId);
-      if (vehicle) {
-        const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-        totalDistance += d;
-        totalReimbursement += d * vehicle.reimbursementRate;
-      }
+      const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+      totalDistance += d;
+      totalReimbursement += calcTripReimbursement(trip);
       if (trip.hasToll && trip.tollAmount) {
         totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
       }
@@ -263,14 +264,17 @@ const ReportsPage: React.FC = () => {
     return months;
   };
 
+  const sortTripsChronological = (trips: Trip[]) =>
+    [...trips].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
   const getTripsByMonth = (trips: Trip[], dateFrom: Date, dateTo: Date) => {
     const months = getMonthsInRange(dateFrom, dateTo);
     return months.map(m => ({
       ...m,
-      trips: trips.filter(t => {
+      trips: sortTripsChronological(trips.filter(t => {
         const d = new Date(t.date);
         return d.getMonth() === m.month && d.getFullYear() === m.year;
-      })
+      }))
     })).filter(m => m.trips.length > 0);
   };
 
@@ -433,7 +437,9 @@ const ReportsPage: React.FC = () => {
           const tripRows = monthGroup.trips.map(trip => {
             const vehicle = getVehicle(trip.vehicleId);
             const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-            const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
+            const td = new Date(trip.date);
+            const rate = getVehicleRateForMonth(trip.vehicleId, td.getFullYear(), td.getMonth());
+            const kmReimb = vehicle ? `${(dist * rate).toFixed(2)} € (${rate.toFixed(4)} €/km)` : '-';
             const toll = trip.hasToll && trip.tollAmount
               ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount).toFixed(2) + ' €' : '-';
             const mealTotal = getMealsTotal(trip);
@@ -466,10 +472,12 @@ const ReportsPage: React.FC = () => {
         }
         y += 4;
       } else {
-        const tripRows = report.trips.map(trip => {
+        const tripRows = sortTripsChronological(report.trips).map(trip => {
           const vehicle = getVehicle(trip.vehicleId);
           const dist = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-          const kmReimb = vehicle ? (dist * vehicle.reimbursementRate).toFixed(2) + ' €' : '-';
+          const td = new Date(trip.date);
+          const rate = getVehicleRateForMonth(trip.vehicleId, td.getFullYear(), td.getMonth());
+          const kmReimb = vehicle ? `${(dist * rate).toFixed(2)} € (${rate.toFixed(4)} €/km)` : '-';
           const toll = trip.hasToll && trip.tollAmount
             ? (trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount).toFixed(2) + ' €' : '-';
           const mealTotal = getMealsTotal(trip);
@@ -684,9 +692,15 @@ const ReportsPage: React.FC = () => {
       header: 'Veicolo',
       render: (trip: Trip) => {
         const vehicle = getVehicle(trip.vehicleId);
-        return vehicle ? (
-          <span>{vehicle.make} {vehicle.model} ({vehicle.plate})</span>
-        ) : <span className="text-red-500">N/D</span>;
+        if (!vehicle) return <span className="text-red-500">N/D</span>;
+        const d = new Date(trip.date);
+        const rate = getVehicleRateForMonth(trip.vehicleId, d.getFullYear(), d.getMonth());
+        return (
+          <div className="flex flex-col">
+            <span>{vehicle.make} {vehicle.model} ({vehicle.plate})</span>
+            <span className="text-xs text-gray-500">{rate.toFixed(4)} €/km</span>
+          </div>
+        );
       },
     },
     {
@@ -701,10 +715,8 @@ const ReportsPage: React.FC = () => {
       key: 'reimbursement',
       header: 'Rimborso km',
       render: (trip: Trip) => {
-        const vehicle = getVehicle(trip.vehicleId);
-        if (!vehicle) return <span>-</span>;
-        const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
-        return <span className="font-medium">{(d * vehicle.reimbursementRate).toFixed(2)} €</span>;
+        if (!getVehicle(trip.vehicleId)) return <span>-</span>;
+        return <span className="font-medium">{calcTripReimbursement(trip).toFixed(2)} €</span>;
       },
     },
     {
@@ -1046,7 +1058,7 @@ const ReportsPage: React.FC = () => {
                     ))}
                   </div>
                 ) : (
-                  <Table columns={tripColumns} data={report.trips} keyExtractor={t => t.id} />
+                  <Table columns={tripColumns} data={sortTripsChronological(report.trips)} keyExtractor={t => t.id} />
                 )}
               </div>
             )}
