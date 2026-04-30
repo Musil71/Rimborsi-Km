@@ -197,7 +197,7 @@ const PersonTripsPage: React.FC = () => {
                 }, [])
               : [{ key: monthFilter, label: '', trips: filteredTrips }];
 
-            const sectionBg = ['bg-white', 'bg-slate-50'];
+            const sectionBg = ['bg-white', 'bg-teal-50'];
 
             return grouped.map((group, groupIdx) => {
               const groupKm = group.trips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
@@ -206,7 +206,7 @@ const PersonTripsPage: React.FC = () => {
                 return sum + (t.tollAmount ?? 0) + (t.isRoundTrip ? (t.returnTollAmount ?? t.tollAmount ?? 0) : 0);
               }, 0);
               const bg = sectionBg[groupIdx % 2];
-              const cardBorder = groupIdx % 2 === 0 ? 'border-gray-200' : 'border-slate-200';
+              const cardBorder = groupIdx % 2 === 0 ? 'border-gray-200' : 'border-teal-100';
 
               return (
                 <div key={group.key} className={`rounded-2xl ${bg} px-4 pt-3 pb-4 border border-transparent`}>
