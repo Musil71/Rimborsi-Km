@@ -36,9 +36,9 @@ const ReportsPage: React.FC = () => {
   const [customDateFrom, setCustomDateFrom] = useState('');
   const [customDateTo, setCustomDateTo] = useState('');
   const [report, setReport] = useState<AnyReport | null>(null);
-  const [filterDocenti, setFilterDocenti] = useState(true);
-  const [filterAmministratori, setFilterAmministratori] = useState(true);
-  const [filterDipendenti, setFilterDipendenti] = useState(true);
+  const [filterDocenti, setFilterDocenti] = useState(false);
+  const [filterAmministratori, setFilterAmministratori] = useState(false);
+  const [filterDipendenti, setFilterDipendenti] = useState(false);
   const [selectedTripRole, setSelectedTripRole] = useState<string>('');
   const [selectedFavDestinations, setSelectedFavDestinations] = useState<string[]>([]);
   const [destinationFilterMode, setDestinationFilterMode] = useState<'include' | 'exclude'>('include');
@@ -829,6 +829,9 @@ const ReportsPage: React.FC = () => {
                 if (personId) {
                   const person = state.people.find(p => p.id === personId);
                   if (person) {
+                    setFilterDocenti(!!person.isDocente);
+                    setFilterAmministratori(!!person.isAmministratore);
+                    setFilterDipendenti(!!person.isDipendente);
                     const roles = [
                       person.isDocente && 'docente',
                       person.isAmministratore && 'amministratore',
@@ -837,6 +840,9 @@ const ReportsPage: React.FC = () => {
                     setSelectedTripRole(roles.length === 1 ? roles[0] : '');
                   }
                 } else {
+                  setFilterDocenti(false);
+                  setFilterAmministratori(false);
+                  setFilterDipendenti(false);
                   setSelectedTripRole('');
                 }
               }}
