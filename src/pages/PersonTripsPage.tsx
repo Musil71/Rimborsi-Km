@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   MapPin, Edit, Trash2, PlusCircle, Banknote, Copy,
-  User, Calendar, ArrowLeft, Route
+  User, Calendar, ArrowLeft, Route, ArrowDownUp
 } from 'lucide-react';
 import Button from '../components/Button';
 import Select from '../components/Select';
@@ -16,6 +16,9 @@ const PersonTripsPage: React.FC = () => {
 
   const [monthFilter, setMonthFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>(() => {
+    return (localStorage.getItem('tripsPageSortOrder') as 'desc' | 'asc') ?? 'desc';
+  });
 
   const person = state.people.find(p => p.id === id);
   const personTrips = state.trips.filter(t => t.personId === id);
@@ -55,7 +58,10 @@ const PersonTripsPage: React.FC = () => {
     }
     if (roleFilter && t.tripRole !== roleFilter) return false;
     return true;
-  }).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }).sort((a, b) => {
+    const diff = new Date(b.date).getTime() - new Date(a.date).getTime();
+    return sortOrder === 'desc' ? diff : -diff;
+  });
 
   const totalKm = filteredTrips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
   const totalToll = filteredTrips.reduce((sum, t) => {
@@ -144,6 +150,18 @@ const PersonTripsPage: React.FC = () => {
             onChange={(e) => setRoleFilter(e.target.value)}
           />
         </div>
+        <button
+          onClick={() => {
+            const next = sortOrder === 'desc' ? 'asc' : 'desc';
+            setSortOrder(next);
+            localStorage.setItem('tripsPageSortOrder', next);
+          }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm font-medium transition-colors border-gray-300 bg-white text-gray-700 hover:border-teal-400 hover:text-teal-700 whitespace-nowrap"
+          title={sortOrder === 'desc' ? 'Ordine: più recente prima' : 'Ordine: più vecchia prima'}
+        >
+          <ArrowDownUp size={14} />
+          {sortOrder === 'desc' ? 'Più recente prima' : 'Più vecchia prima'}
+        </button>
         {filteredTrips.length > 0 && (
           <div className="flex items-center gap-6 text-sm text-gray-600">
             <span className="flex items-center gap-1.5">
