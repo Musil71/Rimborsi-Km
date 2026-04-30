@@ -1,9 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import {
-  MapPin, Edit, Trash2, PlusCircle, Banknote, Copy,
-  User, Calendar, ArrowLeft, Route, ArrowDownUp
-} from 'lucide-react';
+import { MapPin, CreditCard as Edit, Trash2, PlusCircle, Banknote, Copy, User, Calendar, ArrowLeft, Route, ArrowDownUp } from 'lucide-react';
 import Button from '../components/Button';
 import Select from '../components/Select';
 import { useAppContext } from '../context/AppContext';
@@ -78,7 +75,7 @@ const PersonTripsPage: React.FC = () => {
   };
 
   const handleDuplicate = (trip: Trip) => {
-    navigate('/tragitti/nuovo', { state: { duplicateTrip: trip } });
+    navigate('/tragitti/nuovo', { state: { duplicateTrip: trip, returnPersonId: id } });
   };
 
   if (!person) {
