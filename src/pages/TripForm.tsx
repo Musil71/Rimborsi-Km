@@ -74,7 +74,8 @@ const TripForm: React.FC = () => {
     getVehicle,
     getVehiclesForPerson,
     getTollBooth,
-    searchTollStations
+    searchTollStations,
+    getVehicleRateForMonth,
   } = useAppContext();
 
   const isEditing = !!id;
@@ -111,6 +112,7 @@ const TripForm: React.FC = () => {
   const [availableVehicles, setAvailableVehicles] = useState<{ value: string; label: string; }[]>([]);
   const [availableRoles, setAvailableRoles] = useState<{ value: Role; label: string; }[]>([]);
   const [reimbursement, setReimbursement] = useState<number | null>(null);
+  const [ratePerKm, setRatePerKm] = useState<number | null>(null);
   const [tollAmount, setTollAmount] = useState<number | null>(null);
   const [matchedTollBooth, setMatchedTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
   const [matchedReturnTollBooth, setMatchedReturnTollBooth] = useState<{ amount: number; usageCount: number } | null>(null);
@@ -241,29 +243,34 @@ const TripForm: React.FC = () => {
   useEffect(() => {
     calculateReimbursement();
     calculateTollAmount();
-  }, [formData.distance, formData.vehicleId, formData.isRoundTrip, formData.tollAmount, formData.hasToll, formData.returnTollAmount, formData.hasReturnToll, formData.meals]);
+  }, [formData.distance, formData.vehicleId, formData.isRoundTrip, formData.date, formData.tollAmount, formData.hasToll, formData.returnTollAmount, formData.hasReturnToll, formData.meals]);
 
   const calculateReimbursement = () => {
     if (!formData.vehicleId || !formData.distance) {
       setReimbursement(null);
+      setRatePerKm(null);
       return;
     }
 
     const vehicle = getVehicle(formData.vehicleId);
     if (!vehicle) {
       setReimbursement(null);
+      setRatePerKm(null);
       return;
     }
 
     const distance = parseFloat(formData.distance);
     if (isNaN(distance)) {
       setReimbursement(null);
+      setRatePerKm(null);
       return;
     }
 
+    const tripDate = formData.date ? new Date(formData.date) : new Date();
+    const rate = getVehicleRateForMonth(formData.vehicleId, tripDate.getFullYear(), tripDate.getMonth());
     const actualDistance = formData.isRoundTrip ? distance * 2 : distance;
-    const amount = actualDistance * vehicle.reimbursementRate;
-    setReimbursement(amount);
+    setRatePerKm(rate);
+    setReimbursement(actualDistance * rate);
   };
 
   const calculateTollAmount = () => {
@@ -295,7 +302,7 @@ const TripForm: React.FC = () => {
     setAvailableVehicles(
       vehicles.map((v) => ({
         value: v.id,
-        label: `${v.make} ${v.model} (${v.plate}) - ${v.reimbursementRate.toFixed(2)} €/km`,
+        label: `${v.make} ${v.model} (${v.plate})`,
       }))
     );
   };
@@ -674,7 +681,22 @@ const TripForm: React.FC = () => {
               required
               disabled={!formData.personId}
             />
-            
+
+            {formData.vehicleId && ratePerKm !== null && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+                <Calculator className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                <span className="text-sm text-gray-600">
+                  Costo al km:{' '}
+                  <span className="font-semibold text-gray-900">{ratePerKm.toFixed(4)} €/km</span>
+                  <span className="text-xs text-gray-500 ml-1.5">
+                    ({formData.date
+                      ? new Date(formData.date).toLocaleString('it-IT', { month: 'long', year: 'numeric' })
+                      : 'mese corrente'})
+                  </span>
+                </span>
+              </div>
+            )}
+
             {formData.personId && !hasAvailableVehicles && (
               <div className="bg-amber-50 border border-amber-200 rounded-md p-3">
                 <div className="flex items-start">
@@ -682,8 +704,8 @@ const TripForm: React.FC = () => {
                   <div>
                     <p className="text-sm text-amber-800">
                       Nessun veicolo registrato per questa persona.{' '}
-                      <a 
-                        href="/veicoli/nuovo" 
+                      <a
+                        href="/veicoli/nuovo"
                         className="font-medium underline hover:text-amber-900"
                         target="_blank"
                         rel="noopener noreferrer"
@@ -693,19 +715,6 @@ const TripForm: React.FC = () => {
                       prima di continuare.
                     </p>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {formData.vehicleId && (
-              <div className="bg-teal-50 border border-teal-200 rounded-md p-3">
-                <div className="flex items-center">
-                  <Info className="h-4 w-4 text-teal-500 mr-2" />
-                  <span className="text-sm text-teal-700">
-                    Veicolo selezionato automaticamente per{' '}
-                    {state.people.find(p => p.id === formData.personId)?.name}{' '}
-                    {state.people.find(p => p.id === formData.personId)?.surname}
-                  </span>
                 </div>
               </div>
             )}
