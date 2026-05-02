@@ -1,5 +1,6 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
+import logoUrl from '/Logo.png';
 import { Home, Users, Map, BarChart3, Menu, X, LogOut, Plus, Receipt, BedDouble, Star, Gauge } from 'lucide-react';
 import { useState } from 'react';
 import classNames from 'classnames';
@@ -56,7 +57,7 @@ const Layout: React.FC = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <Link to="/" className="flex items-center">
-                <img src="/Logo.png" alt="ITFV Logo" className="h-10 w-auto object-contain" />
+                <img src={logoUrl} alt="ITFV Logo" className="h-10 w-auto object-contain" />
               </Link>
               <Link
                 to="/tragitti/nuovo"
