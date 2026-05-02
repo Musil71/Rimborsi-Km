@@ -55,7 +55,9 @@ const Layout: React.FC = () => {
         <div className="container mx-auto px-4 py-4">
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
-              <h1 className="text-xl md:text-2xl font-bold">ITFV Rimborsi Spese</h1>
+              <Link to="/" className="flex items-center">
+                <img src="/Logo.png" alt="ITFV Logo" className="h-10 w-auto object-contain" />
+              </Link>
               <Link
                 to="/tragitti/nuovo"
                 className="hidden lg:flex items-center space-x-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-5 rounded-lg shadow-lg transition-all duration-200 hover:scale-105"
