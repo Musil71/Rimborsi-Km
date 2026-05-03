@@ -57,7 +57,7 @@ const Layout: React.FC = () => {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-4">
               <Link to="/" className="flex items-center">
-                <img src={logoUrl} alt="ITFV Logo" className="h-8 w-auto object-contain" />
+                <img src={logoUrl} alt="ITFV Logo" className="h-10 w-auto object-contain brightness-0 invert" />
               </Link>
               <Link
                 to="/tragitti/nuovo"
