@@ -75,28 +75,32 @@ const LoginPage: React.FC = () => {
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
       {/* Left panel — brand */}
-      <div className="md:w-1/2 bg-teal-700 flex flex-col items-center justify-center py-16 px-8">
-        <img
-          src={logoUrl}
-          alt="ITFV Logo"
-          className="w-48 md:w-64 h-auto object-contain drop-shadow-lg"
-        />
-        <div className="mt-8 text-center">
-          <h2 className="text-white text-2xl font-bold tracking-wide">Rimborsi Chilometrici</h2>
-          <p className="text-teal-200 mt-2 text-sm">Gestione trasferte e spese ITFV</p>
+      <div className="md:w-1/2 bg-white flex flex-col items-center justify-center py-16 px-8 border-b md:border-b-0 md:border-r border-gray-100">
+        <div className="w-full max-w-xs flex items-center justify-center">
+          <img
+            src={logoUrl}
+            alt="ITFV — Istituto Veneto di Terapia Familiare"
+            className="w-full h-auto object-contain"
+          />
         </div>
-        <div className="mt-12 flex flex-col gap-3 text-teal-100 text-sm w-full max-w-xs">
-          {['Calcolo rimborsi automatico', 'Gestione persone e veicoli', 'Report e statistiche'].map((feat) => (
-            <div key={feat} className="flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-teal-300 flex-shrink-0" />
-              <span>{feat}</span>
-            </div>
-          ))}
+        <div className="mt-10 w-full max-w-xs">
+          <div className="h-px bg-gray-100 mb-8" />
+          <p className="text-gray-500 text-sm text-center leading-relaxed">
+            Gestione rimborsi chilometrici,<br />trasferte e spese del personale
+          </p>
+          <div className="mt-8 flex flex-col gap-3">
+            {['Calcolo rimborsi automatico', 'Gestione persone e veicoli', 'Report e statistiche'].map((feat) => (
+              <div key={feat} className="flex items-center gap-3">
+                <span className="w-2 h-2 rounded-full bg-teal-500 flex-shrink-0" />
+                <span className="text-gray-600 text-sm">{feat}</span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Right panel — form */}
-      <div className="md:w-1/2 flex items-center justify-center bg-gray-50 px-6 py-12">
+      <div className="md:w-1/2 flex items-center justify-center bg-gray-50 px-6 py-12 md:py-0">
         <div className="w-full max-w-sm">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">Accedi</h1>
