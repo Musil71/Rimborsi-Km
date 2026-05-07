@@ -15,7 +15,6 @@ interface FormData {
   customBrand: string;
   model: string;
   plate: string;
-  reimbursementRate: string;
 }
 
 interface FormErrors {
@@ -24,7 +23,6 @@ interface FormErrors {
   customBrand?: string;
   model?: string;
   plate?: string;
-  reimbursementRate?: string;
 }
 
 const VehicleForm: React.FC = () => {
@@ -41,7 +39,6 @@ const VehicleForm: React.FC = () => {
     customBrand: '',
     model: '',
     plate: '',
-    reimbursementRate: '0.35',
   });
 
   const [errors, setErrors] = useState<FormErrors>({});
@@ -55,7 +52,6 @@ const VehicleForm: React.FC = () => {
         customBrand: isStandardBrand ? '' : vehicle.make,
         model: vehicle.model,
         plate: vehicle.plate,
-        reimbursementRate: vehicle.reimbursementRate.toString(),
       });
     }
   }, [vehicle]);
@@ -83,11 +79,6 @@ const VehicleForm: React.FC = () => {
       newErrors.plate = 'La targa è obbligatoria';
     }
 
-    const rate = parseFloat(formData.reimbursementRate);
-    if (isNaN(rate) || rate <= 0) {
-      newErrors.reimbursementRate = 'La tariffa deve essere un numero positivo';
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -111,7 +102,7 @@ const VehicleForm: React.FC = () => {
       make: finalMake,
       model: formData.model,
       plate: formData.plate,
-      reimbursementRate: parseFloat(formData.reimbursementRate),
+      reimbursementRate: vehicle?.reimbursementRate ?? 0,
     };
 
     if (isEditing && vehicle) {
@@ -204,30 +195,15 @@ const VehicleForm: React.FC = () => {
             />
           )}
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input
-              id="plate"
-              name="plate"
-              label="Targa"
-              value={formData.plate}
-              onChange={handleChange}
-              error={errors.plate}
-              required
-            />
-
-            <Input
-              id="reimbursementRate"
-              name="reimbursementRate"
-              label="Tariffa (€/km)"
-              type="number"
-              step="0.01"
-              min="0.01"
-              value={formData.reimbursementRate}
-              onChange={handleChange}
-              error={errors.reimbursementRate}
-              required
-            />
-          </div>
+          <Input
+            id="plate"
+            name="plate"
+            label="Targa"
+            value={formData.plate}
+            onChange={handleChange}
+            error={errors.plate}
+            required
+          />
 
           <div className="flex justify-end">
             <Button

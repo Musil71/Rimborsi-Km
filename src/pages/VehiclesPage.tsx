@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { CarFront, Edit, Trash2, Search } from 'lucide-react';
+import { CarFront, CreditCard as Edit, Trash2, Search } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Table from '../components/Table';
@@ -61,13 +61,6 @@ const VehiclesPage: React.FC = () => {
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
           {vehicle.plate}
         </span>
-      ),
-    },
-    {
-      key: 'reimbursementRate',
-      header: 'Tariffa (€/km)',
-      render: (vehicle: Vehicle) => (
-        <span className="font-medium">{vehicle.reimbursementRate.toFixed(2)} €</span>
       ),
     },
     {

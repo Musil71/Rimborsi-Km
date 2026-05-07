@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Plus, Edit, Trash2, Car } from 'lucide-react';
+import { Save, ArrowLeft, Plus, CreditCard as Edit, Trash2, Car } from 'lucide-react';
 import Button from '../components/Button';
 import Card from '../components/Card';
 import Input from '../components/Input';
@@ -22,7 +22,6 @@ interface VehicleFormData {
   make: string;
   model: string;
   plate: string;
-  reimbursementRate: string;
 }
 
 interface PersonFormErrors {
@@ -35,7 +34,6 @@ interface VehicleFormErrors {
   make?: string;
   model?: string;
   plate?: string;
-  reimbursementRate?: string;
 }
 
 const PersonForm: React.FC = () => {
@@ -60,7 +58,6 @@ const PersonForm: React.FC = () => {
     make: '',
     model: '',
     plate: '',
-    reimbursementRate: '0.35',
   });
 
   const [personErrors, setPersonErrors] = useState<PersonFormErrors>({});
@@ -123,11 +120,6 @@ const PersonForm: React.FC = () => {
       }
     }
 
-    const rate = parseFloat(vehicleFormData.reimbursementRate);
-    if (isNaN(rate) || rate <= 0) {
-      newErrors.reimbursementRate = 'La tariffa deve essere un numero positivo';
-    }
-
     setVehicleErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -186,7 +178,6 @@ const PersonForm: React.FC = () => {
       make: '',
       model: '',
       plate: '',
-      reimbursementRate: '0.35',
     });
     setVehicleErrors({});
   };
@@ -198,7 +189,6 @@ const PersonForm: React.FC = () => {
       make: vehicle.make,
       model: vehicle.model,
       plate: vehicle.plate,
-      reimbursementRate: vehicle.reimbursementRate.toString(),
     });
     setVehicleErrors({});
   };
@@ -215,12 +205,13 @@ const PersonForm: React.FC = () => {
       return;
     }
 
+    const existingVehicle = editingVehicleId ? state.vehicles.find(v => v.id === editingVehicleId) : null;
     const vehicleData = {
       personId: person?.id || '',
       make: vehicleFormData.make,
       model: vehicleFormData.model,
       plate: vehicleFormData.plate,
-      reimbursementRate: parseFloat(vehicleFormData.reimbursementRate),
+      reimbursementRate: existingVehicle?.reimbursementRate ?? 0,
     };
 
     try {
@@ -241,7 +232,6 @@ const PersonForm: React.FC = () => {
         make: '',
         model: '',
         plate: '',
-        reimbursementRate: '0.35',
       });
     } catch (error) {
       console.error('Errore durante il salvataggio del veicolo:', error);
@@ -268,7 +258,6 @@ const PersonForm: React.FC = () => {
       make: '',
       model: '',
       plate: '',
-      reimbursementRate: '0.35',
     });
     setVehicleErrors({});
   };
@@ -417,30 +406,15 @@ const PersonForm: React.FC = () => {
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Input
-                    id="plate"
-                    name="plate"
-                    label="Targa"
-                    value={vehicleFormData.plate}
-                    onChange={handleVehicleChange}
-                    error={vehicleErrors.plate}
-                    required
-                  />
-
-                  <Input
-                    id="reimbursementRate"
-                    name="reimbursementRate"
-                    label="Tariffa (€/km)"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={vehicleFormData.reimbursementRate}
-                    onChange={handleVehicleChange}
-                    error={vehicleErrors.reimbursementRate}
-                    required
-                  />
-                </div>
+                <Input
+                  id="plate"
+                  name="plate"
+                  label="Targa"
+                  value={vehicleFormData.plate}
+                  onChange={handleVehicleChange}
+                  error={vehicleErrors.plate}
+                  required
+                />
 
                 <div className="flex justify-end space-x-2">
                   <Button
@@ -481,9 +455,6 @@ const PersonForm: React.FC = () => {
                           <div className="flex items-center space-x-4 text-sm text-gray-600">
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
                               {vehicle.plate}
-                            </span>
-                            <span className="font-medium text-teal-600">
-                              {vehicle.reimbursementRate.toFixed(2)} €/km
                             </span>
                           </div>
                         </div>
