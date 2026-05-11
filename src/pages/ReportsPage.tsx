@@ -1085,13 +1085,17 @@ const ReportsPage: React.FC = () => {
                       const monthRate = firstTrip
                         ? getVehicleRateForMonth(firstTrip.vehicleId, monthGroup.year, monthGroup.month)
                         : null;
+                      const monthKm = monthGroup.trips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
                       return (
                       <div key={`${monthGroup.year}-${monthGroup.month}`}>
                         <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200 flex items-center justify-between">
                           <span className="text-sm font-semibold text-gray-700">{monthGroup.label}</span>
-                          {monthRate !== null && (
-                            <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded px-2 py-0.5">{monthRate.toFixed(4)} €/km</span>
-                          )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-0.5">{monthKm.toFixed(1)} km</span>
+                            {monthRate !== null && (
+                              <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded px-2 py-0.5">{monthRate.toFixed(4)} €/km</span>
+                            )}
+                          </div>
                         </div>
                         <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
                           <Table columns={tripColumns} data={monthGroup.trips} keyExtractor={t => t.id} />
@@ -1105,13 +1109,15 @@ const ReportsPage: React.FC = () => {
                   const singleRate = firstTrip
                     ? getVehicleRateForMonth(firstTrip.vehicleId, new Date(firstTrip.date).getFullYear(), new Date(firstTrip.date).getMonth())
                     : null;
+                  const totalKm = sortedTrips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
                   return (
                     <div>
-                      {singleRate !== null && (
-                        <div className="flex justify-end mb-2">
+                      <div className="flex justify-end gap-2 mb-2">
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 rounded px-2 py-0.5">{totalKm.toFixed(1)} km totali</span>
+                        {singleRate !== null && (
                           <span className="text-xs font-medium text-gray-500 bg-gray-100 border border-gray-200 rounded px-2 py-0.5">{singleRate.toFixed(4)} €/km</span>
-                        </div>
-                      )}
+                        )}
+                      </div>
                       <Table columns={tripColumns} data={sortedTrips} keyExtractor={t => t.id} />
                     </div>
                   );
