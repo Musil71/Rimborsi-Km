@@ -435,9 +435,10 @@ const ReportsPage: React.FC = () => {
           const monthRatePdf = firstTripInGroup
             ? getVehicleRateForMonth(firstTripInGroup.vehicleId, monthGroup.year, monthGroup.month)
             : null;
+          const monthKmPdf = monthGroup.trips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
           const monthLabelPdf = monthRatePdf !== null
-            ? `${monthGroup.label}  (${monthRatePdf.toFixed(4)} €/km)`
-            : monthGroup.label;
+            ? `${monthGroup.label}  —  ${monthKmPdf.toFixed(1)} km  (${monthRatePdf.toFixed(4)} €/km)`
+            : `${monthGroup.label}  —  ${monthKmPdf.toFixed(1)} km`;
           doc.text(monthLabelPdf, 16, y + 4.2);
           y += 8;
 
@@ -484,10 +485,11 @@ const ReportsPage: React.FC = () => {
         if (firstSingleTrip) {
           const td0 = new Date(firstSingleTrip.date);
           const singleRatePdf = getVehicleRateForMonth(firstSingleTrip.vehicleId, td0.getFullYear(), td0.getMonth());
+          const singleMonthKmPdf = singleMonthTrips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
           doc.setFontSize(8);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(...darkGray);
-          doc.text(`Tariffa applicata: ${singleRatePdf.toFixed(4)} €/km`, 196, y, { align: 'right' });
+          doc.text(`Totale km: ${singleMonthKmPdf.toFixed(1)}  |  Tariffa: ${singleRatePdf.toFixed(4)} €/km`, 196, y, { align: 'right' });
           y += 5;
         }
         const tripRows = singleMonthTrips.map(trip => {
