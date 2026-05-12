@@ -436,9 +436,10 @@ const ReportsPage: React.FC = () => {
             ? getVehicleRateForMonth(firstTripInGroup.vehicleId, monthGroup.year, monthGroup.month)
             : null;
           const monthKmPdf = monthGroup.trips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
+          const monthReimbPdf = monthGroup.trips.reduce((sum, t) => sum + calcTripReimbursement(t), 0);
           const monthLabelPdf = monthRatePdf !== null
-            ? `${monthGroup.label}  —  ${monthKmPdf.toFixed(1)} km  (${monthRatePdf.toFixed(4)} €/km)`
-            : `${monthGroup.label}  —  ${monthKmPdf.toFixed(1)} km`;
+            ? `${monthGroup.label}  —  ${monthKmPdf.toFixed(1)} km  (${monthRatePdf.toFixed(4)} €/km)  =  ${monthReimbPdf.toFixed(2)} €`
+            : `${monthGroup.label}  —  ${monthKmPdf.toFixed(1)} km  =  ${monthReimbPdf.toFixed(2)} €`;
           doc.text(monthLabelPdf, 16, y + 4.2);
           y += 8;
 
@@ -486,10 +487,11 @@ const ReportsPage: React.FC = () => {
           const td0 = new Date(firstSingleTrip.date);
           const singleRatePdf = getVehicleRateForMonth(firstSingleTrip.vehicleId, td0.getFullYear(), td0.getMonth());
           const singleMonthKmPdf = singleMonthTrips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
+          const singleMonthReimbPdf = singleMonthTrips.reduce((sum, t) => sum + calcTripReimbursement(t), 0);
           doc.setFontSize(8);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(...darkGray);
-          doc.text(`Totale km: ${singleMonthKmPdf.toFixed(1)}  |  Tariffa: ${singleRatePdf.toFixed(4)} €/km`, 196, y, { align: 'right' });
+          doc.text(`Totale km: ${singleMonthKmPdf.toFixed(1)}  |  Tariffa: ${singleRatePdf.toFixed(4)} €/km  |  Rimborso km: ${singleMonthReimbPdf.toFixed(2)} €`, 196, y, { align: 'right' });
           y += 5;
         }
         const tripRows = singleMonthTrips.map(trip => {
@@ -1088,6 +1090,7 @@ const ReportsPage: React.FC = () => {
                         ? getVehicleRateForMonth(firstTrip.vehicleId, monthGroup.year, monthGroup.month)
                         : null;
                       const monthKm = monthGroup.trips.reduce((sum, t) => sum + (t.isRoundTrip ? t.distance * 2 : t.distance), 0);
+                      const monthReimb = monthGroup.trips.reduce((sum, t) => sum + calcTripReimbursement(t), 0);
                       return (
                       <div key={`${monthGroup.year}-${monthGroup.month}`}>
                         <div className="bg-gray-100 px-3 py-2 rounded-t-lg border border-gray-200 flex items-center justify-between">
@@ -1097,6 +1100,7 @@ const ReportsPage: React.FC = () => {
                             {monthRate !== null && (
                               <span className="text-xs font-medium text-gray-500 bg-white border border-gray-200 rounded px-2 py-0.5">{monthRate.toFixed(4)} €/km</span>
                             )}
+                            <span className="text-xs font-bold text-green-700 bg-green-50 border border-green-200 rounded px-2 py-0.5">{monthReimb.toFixed(2)} €</span>
                           </div>
                         </div>
                         <div className="border border-t-0 border-gray-200 rounded-b-lg overflow-hidden">
