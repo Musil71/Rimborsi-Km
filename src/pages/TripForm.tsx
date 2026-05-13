@@ -36,6 +36,8 @@ interface FormData {
   isRoundTrip: boolean;
   selectedOfficeId: string;
   useCustomOrigin: boolean;
+  selectedDestOfficeId: string;
+  useOfficeDestination: boolean;
   useCustomDestination: boolean;
   hasToll: boolean;
   tollEntryStation: string;
@@ -95,6 +97,8 @@ const TripForm: React.FC = () => {
     isRoundTrip: false,
     selectedOfficeId: DEFAULT_OFFICE.id,
     useCustomOrigin: false,
+    selectedDestOfficeId: '',
+    useOfficeDestination: false,
     useCustomDestination: false,
     hasToll: false,
     tollEntryStation: '',
@@ -121,6 +125,7 @@ const TripForm: React.FC = () => {
     if (trip) {
       const person = getPerson(trip.personId);
       const matchedOffice = ITFV_OFFICES.find(o => o.address === trip.origin);
+      const matchedDestOffice = ITFV_OFFICES.find(o => o.address === trip.destination);
       const personHomeAddress = person?.homeAddress || DEFAULT_OFFICE.address;
 
       if (trip.personId) {
@@ -140,7 +145,9 @@ const TripForm: React.FC = () => {
         isRoundTrip: trip.isRoundTrip,
         selectedOfficeId: matchedOffice ? matchedOffice.id : DEFAULT_OFFICE.id,
         useCustomOrigin: !matchedOffice && trip.origin !== personHomeAddress,
-        useCustomDestination: true,
+        selectedDestOfficeId: matchedDestOffice ? matchedDestOffice.id : '',
+        useOfficeDestination: !!matchedDestOffice,
+        useCustomDestination: !matchedDestOffice,
         hasToll: trip.hasToll || false,
         tollEntryStation: trip.tollEntryStation || '',
         tollExitStation: trip.tollExitStation || '',
@@ -193,7 +200,9 @@ const TripForm: React.FC = () => {
         isRoundTrip: duplicateData.isRoundTrip,
         selectedOfficeId: ITFV_OFFICES.find(o => o.address === duplicateData.origin)?.id || DEFAULT_OFFICE.id,
         useCustomOrigin: person ? duplicateData.origin !== person.homeAddress : false,
-        useCustomDestination: true,
+        selectedDestOfficeId: ITFV_OFFICES.find(o => o.address === duplicateData.destination)?.id || '',
+        useOfficeDestination: !!ITFV_OFFICES.find(o => o.address === duplicateData.destination),
+        useCustomDestination: !ITFV_OFFICES.find(o => o.address === duplicateData.destination),
         hasToll: duplicateData.hasToll || false,
         tollEntryStation: duplicateData.tollEntryStation || '',
         tollExitStation: duplicateData.tollExitStation || '',
@@ -476,7 +485,18 @@ const TripForm: React.FC = () => {
         setFormData(prev => ({
           ...prev,
           [name]: checked,
+          useOfficeDestination: false,
           destination: '',
+          distance: '',
+        }));
+      } else if (name === 'useOfficeDestination') {
+        setFormData(prev => ({
+          ...prev,
+          [name]: checked,
+          useCustomDestination: false,
+          destination: checked && prev.selectedDestOfficeId
+            ? (ITFV_OFFICES.find(o => o.id === prev.selectedDestOfficeId)?.address || '')
+            : '',
           distance: '',
         }));
       } else {
@@ -488,6 +508,13 @@ const TripForm: React.FC = () => {
         ...prev,
         selectedOfficeId: value,
         origin: office.address,
+      }));
+    } else if (name === 'selectedDestOfficeId') {
+      const office = ITFV_OFFICES.find(o => o.id === value);
+      setFormData(prev => ({
+        ...prev,
+        selectedDestOfficeId: value,
+        destination: office ? office.address : prev.destination,
       }));
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
@@ -778,76 +805,118 @@ const TripForm: React.FC = () => {
               <span className="font-medium text-blue-800">Indirizzo di Destinazione</span>
             </div>
 
-            {state.favoriteDestinations.length > 0 && (
-              <div className="mb-4">
-                <div className="flex items-center mb-2">
-                  <Star className="h-4 w-4 text-amber-500 mr-1.5" />
-                  <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">Destinazioni abituali</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {state.favoriteDestinations.map(dest => {
-                    const isSelected = formData.destination === dest.address && formData.useCustomDestination;
-                    return (
-                      <button
-                        key={dest.id}
-                        type="button"
-                        onClick={() => {
-                          setFormData(prev => ({
-                            ...prev,
-                            destination: dest.address,
-                            distance: String(dest.defaultDistance),
-                            useCustomDestination: true,
-                          }));
-                          if (errors.destination) setErrors(prev => ({ ...prev, destination: undefined }));
-                        }}
-                        className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 ${
-                          isSelected
-                            ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
-                            : 'bg-white border-amber-200 text-amber-800 hover:bg-amber-50 hover:border-amber-400'
-                        }`}
-                        title={dest.address}
-                      >
-                        <span>{dest.name}</span>
-                        <span className={`ml-1.5 text-xs ${isSelected ? 'text-amber-100' : 'text-amber-500'}`}>
-                          {dest.defaultDistance} km
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+            {/* Office as destination */}
+            <div className="flex items-center mb-3">
+              <input
+                id="useOfficeDestination"
+                name="useOfficeDestination"
+                type="checkbox"
+                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                checked={formData.useOfficeDestination}
+                onChange={handleChange}
+              />
+              <label htmlFor="useOfficeDestination" className="ml-2 block text-sm text-blue-700">
+                Destinazione: una sede dell'istituto
+              </label>
+            </div>
+
+            {formData.useOfficeDestination && (
+              <div className="mb-3 space-y-2">
+                {ITFV_OFFICES.map(office => (
+                  <label key={office.id} className="flex items-center space-x-3 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="selectedDestOfficeId"
+                      value={office.id}
+                      checked={formData.selectedDestOfficeId === office.id}
+                      onChange={handleChange}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                    />
+                    <span className="text-sm text-blue-800">
+                      <span className="font-medium">{office.name}</span>
+                      <span className="text-blue-600 ml-1">— {office.address}</span>
+                    </span>
+                  </label>
+                ))}
+                {errors.destination && <p className="text-xs text-red-600 mt-1">{errors.destination}</p>}
               </div>
             )}
 
-            <div className="space-y-3">
-              <div className="flex items-center">
-                <input
-                  id="useCustomDestination"
-                  name="useCustomDestination"
-                  type="checkbox"
-                  className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-                  checked={formData.useCustomDestination}
-                  onChange={handleChange}
-                />
-                <label htmlFor="useCustomDestination" className="ml-2 block text-sm text-blue-700">
-                  Inserisci manualmente l'indirizzo di destinazione
-                </label>
-              </div>
+            {!formData.useOfficeDestination && (
+              <>
+                {state.favoriteDestinations.length > 0 && (
+                  <div className="mb-4">
+                    <div className="flex items-center mb-2">
+                      <Star className="h-4 w-4 text-amber-500 mr-1.5" />
+                      <span className="text-xs font-medium text-blue-700 uppercase tracking-wide">Destinazioni abituali</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {state.favoriteDestinations.map(dest => {
+                        const isSelected = formData.destination === dest.address && formData.useCustomDestination;
+                        return (
+                          <button
+                            key={dest.id}
+                            type="button"
+                            onClick={() => {
+                              setFormData(prev => ({
+                                ...prev,
+                                destination: dest.address,
+                                distance: String(dest.defaultDistance),
+                                useCustomDestination: true,
+                                useOfficeDestination: false,
+                              }));
+                              if (errors.destination) setErrors(prev => ({ ...prev, destination: undefined }));
+                            }}
+                            className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium border transition-all duration-150 ${
+                              isSelected
+                                ? 'bg-amber-500 border-amber-500 text-white shadow-sm'
+                                : 'bg-white border-amber-200 text-amber-800 hover:bg-amber-50 hover:border-amber-400'
+                            }`}
+                            title={dest.address}
+                          >
+                            <span>{dest.name}</span>
+                            <span className={`ml-1.5 text-xs ${isSelected ? 'text-amber-100' : 'text-amber-500'}`}>
+                              {dest.defaultDistance} km
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
-              {formData.useCustomDestination && (
-                <Input
-                  id="destination"
-                  name="destination"
-                  value={formData.destination}
-                  onChange={handleChange}
-                  error={errors.destination}
-                  placeholder="Inserisci l'indirizzo di destinazione"
-                  required
-                />
-              )}
-            </div>
+                <div className="space-y-3">
+                  <div className="flex items-center">
+                    <input
+                      id="useCustomDestination"
+                      name="useCustomDestination"
+                      type="checkbox"
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                      checked={formData.useCustomDestination}
+                      onChange={handleChange}
+                    />
+                    <label htmlFor="useCustomDestination" className="ml-2 block text-sm text-blue-700">
+                      Inserisci manualmente l'indirizzo di destinazione
+                    </label>
+                  </div>
+
+                  {formData.useCustomDestination && (
+                    <Input
+                      id="destination"
+                      name="destination"
+                      value={formData.destination}
+                      onChange={handleChange}
+                      error={errors.destination}
+                      placeholder="Inserisci l'indirizzo di destinazione"
+                      required
+                    />
+                  )}
+                </div>
+              </>
+            )}
           </div>
 
-          {formData.useCustomDestination && (
+          {(formData.useCustomDestination || formData.useOfficeDestination) && (
             <div className="bg-green-50 p-4 rounded-lg border border-green-100 mb-4">
               <div className="flex items-start">
                 <Info className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
