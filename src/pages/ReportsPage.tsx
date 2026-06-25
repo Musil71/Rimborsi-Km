@@ -45,6 +45,8 @@ const ReportsPage: React.FC = () => {
   const [multiRoleInfo, setMultiRoleInfo] = useState<{ hasMultipleRoles: boolean; roleCounts: Record<string, number> } | null>(null);
   const [noDataFound, setNoDataFound] = useState(false);
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
+  const [customMode, setCustomMode] = useState<'mesi' | 'date'>('mesi');
+  const [selectedCustomMonths, setSelectedCustomMonths] = useState<number[]>([]);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i.toString(),
@@ -184,6 +186,54 @@ const ReportsPage: React.FC = () => {
     return { ...reportData, trips: filteredTrips, totalDistance, totalReimbursement, totalTollFees, totalMealReimbursement };
   };
 
+  const applyCustomMonthFilter = (reportData: AnyReport, months: number[], year: number): AnyReport => {
+    const inRange = (date: Date) => date.getFullYear() === year && months.includes(date.getMonth());
+    const filteredTrips = reportData.trips.filter(t => inRange(new Date(t.date)));
+    const filteredExpenses = reportData.expenses.filter(e => inRange(new Date(e.date)));
+    const filteredAccommodations = reportData.accommodations.filter(a => inRange(new Date(a.dateFrom)));
+    let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
+    filteredTrips.forEach(trip => {
+      const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+      totalDistance += d;
+      totalReimbursement += calcTripReimbursement(trip);
+      if (trip.hasToll && trip.tollAmount) totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+      if (trip.isRoundTrip && trip.returnTollAmount) totalTollFees += trip.returnTollAmount;
+      if (trip.meals && trip.meals.length > 0) trip.meals.forEach(m => { totalMealReimbursement += m.amount; });
+      else if (trip.hasMeal && trip.mealAmount) totalMealReimbursement += trip.mealAmount;
+    });
+    return {
+      ...reportData,
+      trips: filteredTrips,
+      expenses: filteredExpenses,
+      accommodations: filteredAccommodations,
+      totalDistance,
+      totalReimbursement,
+      totalTollFees,
+      totalMealReimbursement,
+      totalExpenses: filteredExpenses.reduce((s, e) => s + e.amount, 0),
+      totalAccommodations: filteredAccommodations.reduce((s, a) => s + a.amount, 0),
+    };
+  };
+
+  const buildCustomMonthsLabel = (sortedMonths: number[], year: number): string => {
+    if (sortedMonths.length === 0) return '';
+    if (sortedMonths.length === 12) return `Anno ${year}`;
+    let consecutive = true;
+    for (let i = 1; i < sortedMonths.length; i++) {
+      if (sortedMonths[i] !== sortedMonths[i - 1] + 1) { consecutive = false; break; }
+    }
+    if (consecutive && sortedMonths.length > 2) {
+      return `${MONTH_NAMES_IT[sortedMonths[0]]} – ${MONTH_NAMES_IT[sortedMonths[sortedMonths.length - 1]]} ${year}`;
+    }
+    return sortedMonths.map(m => MONTH_NAMES_IT[m]).join(', ') + ` ${year}`;
+  };
+
+  const buildCustomMonthsPdfSuffix = (sortedMonths: number[], year: number): string => {
+    const short = ['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+    if (sortedMonths.length === 12) return `anno-${year}`;
+    return sortedMonths.map(m => short[m]).join('-') + `-${year}`;
+  };
+
   const handleGenerateReport = () => {
     if (!selectedPerson) return;
 
@@ -203,11 +253,22 @@ const ReportsPage: React.FC = () => {
       const { dateFrom, dateTo, label } = getSemesterRange(parseInt(selectedSemester), year);
       rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
     } else if (periodType === 'personalizzato') {
-      if (!customDateFrom || !customDateTo) return;
-      const from = new Date(customDateFrom);
-      const to = new Date(customDateTo);
-      const label = `${from.toLocaleDateString('it-IT')} – ${to.toLocaleDateString('it-IT')}`;
-      rawReport = generatePeriodReport(selectedPerson, from, to, label);
+      if (customMode === 'date') {
+        if (!customDateFrom || !customDateTo) return;
+        const from = new Date(customDateFrom);
+        const to = new Date(customDateTo);
+        const label = `${from.toLocaleDateString('it-IT')} – ${to.toLocaleDateString('it-IT')}`;
+        rawReport = generatePeriodReport(selectedPerson, from, to, label);
+      } else {
+        if (selectedCustomMonths.length === 0) return;
+        const year = parseInt(selectedYear);
+        const sortedMonths = [...selectedCustomMonths].sort((a, b) => a - b);
+        const dateFrom = new Date(year, sortedMonths[0], 1);
+        const dateTo = new Date(year, sortedMonths[sortedMonths.length - 1] + 1, 0);
+        const label = buildCustomMonthsLabel(sortedMonths, year);
+        rawReport = generatePeriodReport(selectedPerson, dateFrom, dateTo, label);
+        if (rawReport) rawReport = applyCustomMonthFilter(rawReport, sortedMonths, year);
+      }
     }
 
     if (!rawReport) {
@@ -681,9 +742,13 @@ const ReportsPage: React.FC = () => {
       ? `${MONTH_NAMES_IT[parseInt(selectedMonth)].toLowerCase()}-${selectedYear}`
       : periodType === 'trimestrale'
         ? `T${selectedQuarter}-${selectedYear}`
-        : periodType === 'semestrale'
-          ? `S${selectedSemester}-${selectedYear}`
-          : `${customDateFrom}_${customDateTo}`;
+        : periodType === 'quadrimestrale'
+          ? `Q${selectedQuadrimester}-${selectedYear}`
+          : periodType === 'semestrale'
+            ? `S${selectedSemester}-${selectedYear}`
+            : customMode === 'mesi'
+              ? buildCustomMonthsPdfSuffix([...selectedCustomMonths].sort((a, b) => a - b), parseInt(selectedYear))
+              : `${customDateFrom}_${customDateTo}`;
 
     doc.save(`nota-spese_${person.surname.toLowerCase()}_${suffix}.pdf`);
   };
@@ -919,9 +984,81 @@ const ReportsPage: React.FC = () => {
           )}
 
           {periodType === 'personalizzato' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-              <Input id="dateFrom" label="Data Inizio" type="date" value={customDateFrom} onChange={e => setCustomDateFrom(e.target.value)} />
-              <Input id="dateTo" label="Data Fine" type="date" value={customDateTo} onChange={e => setCustomDateTo(e.target.value)} />
+            <div className="mb-4">
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden text-sm mb-4 w-fit">
+                <button
+                  onClick={() => setCustomMode('mesi')}
+                  className={`px-4 py-2 font-medium transition-colors ${customMode === 'mesi' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Selezione mesi
+                </button>
+                <button
+                  onClick={() => setCustomMode('date')}
+                  className={`px-4 py-2 font-medium border-l border-gray-300 transition-colors ${customMode === 'date' ? 'bg-teal-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Date precise
+                </button>
+              </div>
+
+              {customMode === 'mesi' && (
+                <div>
+                  <div className="mb-3 w-40">
+                    <Select id="customYear" label="Anno" options={yearOptions} value={selectedYear} onChange={e => setSelectedYear(e.target.value)} />
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    {[
+                      { label: 'Tutti', months: [0,1,2,3,4,5,6,7,8,9,10,11] },
+                      { label: 'Nessuno', months: [] },
+                      { label: '1° Semestre', months: [0,1,2,3,4,5] },
+                      { label: '2° Semestre', months: [6,7,8,9,10,11] },
+                    ].map(opt => (
+                      <button
+                        key={opt.label}
+                        onClick={() => setSelectedCustomMonths(opt.months)}
+                        className="px-3 py-1.5 text-xs font-medium rounded-md border border-gray-300 bg-white text-gray-600 hover:border-teal-400 hover:text-teal-700 transition-colors"
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-2 mb-3">
+                    {MONTH_NAMES_IT.map((name, idx) => {
+                      const selected = selectedCustomMonths.includes(idx);
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => setSelectedCustomMonths(prev =>
+                            prev.includes(idx) ? prev.filter(m => m !== idx) : [...prev, idx].sort((a, b) => a - b)
+                          )}
+                          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-all ${
+                            selected ? 'bg-teal-600 text-white border-teal-600' : 'bg-white text-gray-700 border-gray-300 hover:border-teal-400'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded flex-shrink-0 border-2 flex items-center justify-center ${selected ? 'bg-white border-white' : 'border-gray-400'}`}>
+                            {selected && <span className="w-2 h-2 bg-teal-600 rounded-sm block" />}
+                          </span>
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {selectedCustomMonths.length > 0 ? (
+                    <p className="text-sm text-teal-700 font-medium">
+                      {selectedCustomMonths.length} {selectedCustomMonths.length === 1 ? 'mese selezionato' : 'mesi selezionati'}:{' '}
+                      {buildCustomMonthsLabel([...selectedCustomMonths].sort((a, b) => a - b), parseInt(selectedYear))}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-gray-400">Seleziona almeno un mese</p>
+                  )}
+                </div>
+              )}
+
+              {customMode === 'date' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Input id="dateFrom" label="Data Inizio" type="date" value={customDateFrom} onChange={e => setCustomDateFrom(e.target.value)} />
+                  <Input id="dateTo" label="Data Fine" type="date" value={customDateTo} onChange={e => setCustomDateTo(e.target.value)} />
+                </div>
+              )}
             </div>
           )}
 
@@ -1000,7 +1137,7 @@ const ReportsPage: React.FC = () => {
             variant="primary"
             icon={<FileText size={18} />}
             onClick={handleGenerateReport}
-            disabled={!selectedPerson || (periodType === 'personalizzato' && (!customDateFrom || !customDateTo))}
+            disabled={!selectedPerson || (periodType === 'personalizzato' && customMode === 'date' && (!customDateFrom || !customDateTo)) || (periodType === 'personalizzato' && customMode === 'mesi' && selectedCustomMonths.length === 0)}
           >
             Genera Report
           </Button>
