@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { MapPin, CreditCard as Edit, Trash2, PlusCircle, Banknote, Copy, User, Calendar, ArrowLeft, Route, ArrowDownUp, Euro } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
+import { MapPin, CreditCard as Edit, Trash2, PlusCircle, Banknote, Copy, User, Calendar, ArrowLeft, Route, ArrowDownUp, Euro, CalendarDays } from 'lucide-react';
 import Button from '../components/Button';
 import Select from '../components/Select';
 import { useAppContext } from '../context/AppContext';
@@ -10,35 +10,47 @@ const PersonTripsPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { state, deleteTrip, getVehicle, formatDate, getVehicleRateForMonth } = useAppContext();
   const navigate = useNavigate();
+  const location = useLocation();
 
+  const currentYear = new Date().getFullYear();
+  const passedYear = (location.state as { selectedYear?: number } | null)?.selectedYear;
+
+  const person = state.people.find(p => p.id === id);
+  const allPersonTrips = state.trips.filter(t => t.personId === id);
+
+  const availableYears = useMemo(() => {
+    const years = new Set<number>();
+    years.add(currentYear);
+    allPersonTrips.forEach(t => years.add(new Date(t.date).getFullYear()));
+    return [...years].sort((a, b) => b - a);
+  }, [allPersonTrips, currentYear]);
+
+  const [selectedYear, setSelectedYear] = useState(passedYear ?? currentYear);
   const [monthFilter, setMonthFilter] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>(() => {
     return (localStorage.getItem('tripsPageSortOrder') as 'desc' | 'asc') ?? 'desc';
   });
 
-  const person = state.people.find(p => p.id === id);
-  const personTrips = state.trips.filter(t => t.personId === id);
+  const yearTrips = allPersonTrips.filter(t => new Date(t.date).getFullYear() === selectedYear);
 
-  const monthOptions = () => {
+  const monthOptions = useMemo(() => {
     const options: { value: string; label: string }[] = [{ value: '', label: 'Tutti i mesi' }];
-    const months = new Set<string>();
-    personTrips.forEach(t => {
+    const monthKeys = new Set<string>();
+    yearTrips.forEach(t => {
       const d = new Date(t.date);
-      const value = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-      months.add(value);
+      monthKeys.add(`${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`);
     });
-    const now = new Date();
-    for (let i = 0; i < 24; i++) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const value = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
-      if (months.has(value)) {
-        const label = `${d.toLocaleString('it-IT', { month: 'long' })} ${d.getFullYear()}`;
-        options.push({ value, label });
+    for (let m = 0; m < 12; m++) {
+      const d = new Date(selectedYear, m, 1);
+      const key = `${d.getFullYear()}-${(d.getMonth() + 1).toString().padStart(2, '0')}`;
+      if (monthKeys.has(key)) {
+        const label = `${d.toLocaleString('it-IT', { month: 'long' })}`;
+        options.push({ value: key, label });
       }
     }
     return options;
-  };
+  }, [yearTrips, selectedYear]);
 
   const roleOptions = [
     { value: '', label: 'Tutti i ruoli' },
@@ -47,7 +59,7 @@ const PersonTripsPage: React.FC = () => {
     { value: 'amministratore', label: 'Amministratore' },
   ];
 
-  const filteredTrips = personTrips.filter(t => {
+  const filteredTrips = yearTrips.filter(t => {
     if (monthFilter) {
       const [y, m] = monthFilter.split('-').map(Number);
       const d = new Date(t.date);
@@ -83,6 +95,11 @@ const PersonTripsPage: React.FC = () => {
 
   const handleDuplicate = (trip: Trip) => {
     navigate('/tragitti/nuovo', { state: { duplicateTrip: trip, returnPersonId: id } });
+  };
+
+  const handleYearChange = (year: number) => {
+    setSelectedYear(year);
+    setMonthFilter('');
   };
 
   if (!person) {
@@ -121,7 +138,7 @@ const PersonTripsPage: React.FC = () => {
             <div className="flex items-center gap-4 mt-0.5">
               <span className="text-sm text-gray-500 flex items-center gap-1.5">
                 <Route size={13} />
-                {personTrips.length} {personTrips.length === 1 ? 'trasferta' : 'trasferte'} totali
+                {yearTrips.length} {yearTrips.length === 1 ? 'trasferta' : 'trasferte'} nel {selectedYear}
               </span>
             </div>
           </div>
@@ -135,12 +152,31 @@ const PersonTripsPage: React.FC = () => {
         </Button>
       </div>
 
+      <div className="flex items-center gap-2">
+        <CalendarDays size={16} className="text-gray-400" />
+        <div className="flex gap-1.5 flex-wrap">
+          {availableYears.map(year => (
+            <button
+              key={year}
+              onClick={() => handleYearChange(year)}
+              className={`px-3.5 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                selectedYear === year
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300 hover:text-teal-700'
+              }`}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <div className="w-full sm:w-56">
           <Select
             id="month-filter"
             label=""
-            options={monthOptions()}
+            options={monthOptions}
             value={monthFilter}
             onChange={(e) => setMonthFilter(e.target.value)}
           />
@@ -190,7 +226,7 @@ const PersonTripsPage: React.FC = () => {
         <div className="text-center py-20 text-gray-400">
           <Route size={40} className="mx-auto mb-3 opacity-40" />
           <p className="text-sm">
-            {(monthFilter || roleFilter) ? 'Nessuna trasferta corrisponde ai filtri selezionati.' : 'Nessuna trasferta registrata.'}
+            {(monthFilter || roleFilter) ? 'Nessuna trasferta corrisponde ai filtri selezionati.' : `Nessuna trasferta registrata nel ${selectedYear}.`}
           </p>
         </div>
       ) : (
