@@ -84,10 +84,11 @@ const TripForm: React.FC = () => {
   const trip = isEditing ? state.trips.find((t) => t.id === id) : null;
   const isDuplicating = !!(location.state as any)?.duplicateTrip;
   const duplicateData = isDuplicating ? (location.state as any).duplicateTrip : null;
+  const preselectedPersonId = (location.state as any)?.preselectedPersonId as string | undefined;
 
   const [formData, setFormData] = useState<FormData>({
     date: new Date().toISOString().split('T')[0],
-    personId: '',
+    personId: preselectedPersonId || '',
     vehicleId: '',
     tripRole: 'docente',
     origin: DEFAULT_OFFICE.address,
@@ -216,6 +217,13 @@ const TripForm: React.FC = () => {
       });
     }
   }, [isDuplicating]);
+
+  useEffect(() => {
+    if (!isEditing && !isDuplicating && preselectedPersonId) {
+      updateAvailableVehicles(preselectedPersonId);
+      updateAvailableRoles(preselectedPersonId);
+    }
+  }, [preselectedPersonId, isEditing, isDuplicating]);
 
   useEffect(() => {
     if (formData.hasToll && formData.tollEntryStation && formData.tollExitStation) {
@@ -605,8 +613,8 @@ const TripForm: React.FC = () => {
       }
     }
 
-    const returnPersonId = (location.state as any)?.returnPersonId;
-    navigate(returnPersonId ? `/tragitti/persona/${returnPersonId}` : '/tragitti');
+    const redirectPersonId = formData.personId || (location.state as any)?.returnPersonId;
+    navigate(redirectPersonId ? `/tragitti/persona/${redirectPersonId}` : '/tragitti');
   };
 
   const canCalculateDistance = formData.origin.trim() && formData.destination.trim();
@@ -618,7 +626,10 @@ const TripForm: React.FC = () => {
         <Button
           variant="secondary"
           icon={<ArrowLeft size={18} />}
-          onClick={() => navigate('/tragitti')}
+          onClick={() => {
+            const backPersonId = preselectedPersonId || (location.state as any)?.returnPersonId;
+            navigate(backPersonId ? `/tragitti/persona/${backPersonId}` : '/tragitti');
+          }}
         >
           Torna all'elenco
         </Button>

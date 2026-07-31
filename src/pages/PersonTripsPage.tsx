@@ -129,7 +129,7 @@ const PersonTripsPage: React.FC = () => {
         <Button
           variant="primary"
           icon={<PlusCircle size={16} />}
-          onClick={() => navigate('/tragitti/nuovo', { state: { preselectedPersonId: person.id } })}
+          onClick={() => navigate('/tragitti/nuovo', { state: { preselectedPersonId: person.id, returnPersonId: person.id } })}
         >
           Nuova Trasferta
         </Button>
