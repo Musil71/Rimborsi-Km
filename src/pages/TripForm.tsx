@@ -9,7 +9,7 @@ import AutocompleteInput from '../components/AutocompleteInput';
 import { useAppContext } from '../context/AppContext';
 import { calculateDistance } from '../utils/distanceCalculator';
 import { Trip, Role, TripMeal, ExpenseType, EXPENSE_TYPE_LABELS } from '../types';
-import { ITFV_OFFICES, DEFAULT_OFFICE } from '../utils/itfvOffices';
+import { ITFV_OFFICES, DEFAULT_OFFICE, getOfficePairDistance } from '../utils/itfvOffices';
 
 interface MealEntry {
   mealType: 'pranzo' | 'cena';
@@ -484,11 +484,17 @@ const TripForm: React.FC = () => {
         const person = formData.personId ? getPerson(formData.personId) : null;
         const office = ITFV_OFFICES.find(o => o.id === formData.selectedOfficeId) || DEFAULT_OFFICE;
         const defaultOrigin = person?.homeAddress || office.address;
-        setFormData(prev => ({
-          ...prev,
-          [name]: checked,
-          origin: defaultOrigin
-        }));
+        setFormData(prev => {
+          const predefined = prev.useOfficeDestination && prev.selectedDestOfficeId
+            ? getOfficePairDistance(prev.selectedOfficeId, prev.selectedDestOfficeId)
+            : null;
+          return {
+            ...prev,
+            [name]: checked,
+            origin: defaultOrigin,
+            ...(predefined != null ? { distance: String(predefined) } : {}),
+          };
+        });
       } else if (name === 'useCustomDestination') {
         setFormData(prev => ({
           ...prev,
@@ -498,32 +504,50 @@ const TripForm: React.FC = () => {
           distance: '',
         }));
       } else if (name === 'useOfficeDestination') {
-        setFormData(prev => ({
-          ...prev,
-          [name]: checked,
-          useCustomDestination: false,
-          destination: checked && prev.selectedDestOfficeId
-            ? (ITFV_OFFICES.find(o => o.id === prev.selectedDestOfficeId)?.address || '')
-            : '',
-          distance: '',
-        }));
+        setFormData(prev => {
+          const destOfficeId = checked ? prev.selectedDestOfficeId : '';
+          const predefined = checked && destOfficeId && !prev.useCustomOrigin
+            ? getOfficePairDistance(prev.selectedOfficeId, destOfficeId)
+            : null;
+          return {
+            ...prev,
+            [name]: checked,
+            useCustomDestination: false,
+            destination: checked && prev.selectedDestOfficeId
+              ? (ITFV_OFFICES.find(o => o.id === prev.selectedDestOfficeId)?.address || '')
+              : '',
+            distance: predefined != null ? String(predefined) : '',
+          };
+        });
       } else {
         setFormData(prev => ({ ...prev, [name]: checked }));
       }
     } else if (name === 'selectedOfficeId') {
       const office = ITFV_OFFICES.find(o => o.id === value) || DEFAULT_OFFICE;
-      setFormData(prev => ({
-        ...prev,
-        selectedOfficeId: value,
-        origin: office.address,
-      }));
+      setFormData(prev => {
+        const predefined = prev.useOfficeDestination && prev.selectedDestOfficeId
+          ? getOfficePairDistance(value, prev.selectedDestOfficeId)
+          : null;
+        return {
+          ...prev,
+          selectedOfficeId: value,
+          origin: office.address,
+          ...(predefined != null ? { distance: String(predefined) } : {}),
+        };
+      });
     } else if (name === 'selectedDestOfficeId') {
       const office = ITFV_OFFICES.find(o => o.id === value);
-      setFormData(prev => ({
-        ...prev,
-        selectedDestOfficeId: value,
-        destination: office ? office.address : prev.destination,
-      }));
+      setFormData(prev => {
+        const predefined = !prev.useCustomOrigin
+          ? getOfficePairDistance(prev.selectedOfficeId, value)
+          : null;
+        return {
+          ...prev,
+          selectedDestOfficeId: value,
+          destination: office ? office.address : prev.destination,
+          ...(predefined != null ? { distance: String(predefined) } : {}),
+        };
+      });
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }

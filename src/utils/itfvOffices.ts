@@ -24,6 +24,18 @@ export const ITFV_OFFICES: ItfvOffice[] = [
 
 export const DEFAULT_OFFICE = ITFV_OFFICES[0];
 
+const OFFICE_DISTANCES: Record<string, number> = {
+  'marcon-treviso': 30,
+  'treviso-vicenza': 80,
+  'marcon-vicenza': 72,
+};
+
+export function getOfficePairDistance(officeIdA: string, officeIdB: string): number | null {
+  if (!officeIdA || !officeIdB || officeIdA === officeIdB) return null;
+  const key = [officeIdA, officeIdB].sort().join('-');
+  return OFFICE_DISTANCES[key] ?? null;
+}
+
 export const COMPANY_INFO = {
   ragioneSociale: 'ISTITUTO VENETO DI TERAPIA FAMILIARE S.R.L.',
   partitaIva: '02034280269',
