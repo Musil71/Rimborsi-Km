@@ -853,6 +853,60 @@ const ReportsPage: React.FC = () => {
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-800">Report Trasferte</h1>
 
+      <div className="bg-gradient-to-r from-gray-50 to-teal-50 border border-teal-200 rounded-xl p-5">
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+          <div className="flex-1">
+            <h2 className="text-sm font-semibold text-teal-800 mb-3 flex items-center gap-2">
+              <ClipboardList size={16} />
+              Modello Vuoto Mensile
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Select
+                id="blankMonth"
+                label="Mese"
+                options={monthOptions}
+                value={selectedMonth}
+                onChange={e => setSelectedMonth(e.target.value)}
+              />
+              <Select
+                id="blankYear"
+                label="Anno"
+                options={yearOptions}
+                value={selectedYear}
+                onChange={e => setSelectedYear(e.target.value)}
+              />
+              <Select
+                id="blankPerson"
+                label="Persona (opzionale)"
+                options={[
+                  { value: '', label: 'Nessuna' },
+                  ...state.people.slice().sort((a, b) => a.surname.localeCompare(b.surname)).map(p => ({
+                    value: p.id,
+                    label: `${p.surname} ${p.name}`,
+                  })),
+                ]}
+                value={selectedPerson}
+                onChange={e => setSelectedPerson(e.target.value)}
+              />
+            </div>
+          </div>
+          <Button
+            variant="primary"
+            icon={<ClipboardList size={18} />}
+            onClick={() => {
+              const person = selectedPerson ? state.people.find(p => p.id === selectedPerson) : null;
+              generateBlankMonthlyPdf({
+                month: parseInt(selectedMonth),
+                year: parseInt(selectedYear),
+                personName: person ? `${person.surname} ${person.name}` : undefined,
+              });
+            }}
+          >
+            Scarica Modello Vuoto
+          </Button>
+        </div>
+      </div>
+
       <Card>
         <div className="mb-6">
           <h2 className="text-lg font-medium text-gray-900 mb-4">Genera Report</h2>
@@ -1134,30 +1188,14 @@ const ReportsPage: React.FC = () => {
             </div>
           )}
 
-          <div className="flex flex-wrap gap-3">
-            <Button
-              variant="primary"
-              icon={<FileText size={18} />}
-              onClick={handleGenerateReport}
-              disabled={!selectedPerson || (periodType === 'personalizzato' && customMode === 'date' && (!customDateFrom || !customDateTo)) || (periodType === 'personalizzato' && customMode === 'mesi' && selectedCustomMonths.length === 0)}
-            >
-              Genera Report
-            </Button>
-            <Button
-              variant="outline"
-              icon={<ClipboardList size={18} />}
-              onClick={() => {
-                const person = selectedPerson ? state.people.find(p => p.id === selectedPerson) : null;
-                generateBlankMonthlyPdf({
-                  month: parseInt(selectedMonth),
-                  year: parseInt(selectedYear),
-                  personName: person ? `${person.surname} ${person.name}` : undefined,
-                });
-              }}
-            >
-              Scarica Modello Vuoto
-            </Button>
-          </div>
+          <Button
+            variant="primary"
+            icon={<FileText size={18} />}
+            onClick={handleGenerateReport}
+            disabled={!selectedPerson || (periodType === 'personalizzato' && customMode === 'date' && (!customDateFrom || !customDateTo)) || (periodType === 'personalizzato' && customMode === 'mesi' && selectedCustomMonths.length === 0)}
+          >
+            Genera Report
+          </Button>
         </div>
 
         {noDataFound && (
