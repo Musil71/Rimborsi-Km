@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, MapPin, Pencil } from 'lucide-react';
+import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, MapPin, Pencil, ClipboardList } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Button from '../components/Button';
@@ -11,6 +11,7 @@ import QuickEditTripModal from '../components/QuickEditTripModal';
 import { useAppContext } from '../context/AppContext';
 import { Trip, MonthlyReport, PeriodReport, ReportPeriodType, EXPENSE_TYPE_LABELS } from '../types';
 import { COMPANY_INFO } from '../utils/itfvOffices';
+import { generateBlankMonthlyPdf } from '../utils/blankPdfTemplate';
 
 const MONTH_NAMES_IT = [
   'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -1133,14 +1134,30 @@ const ReportsPage: React.FC = () => {
             </div>
           )}
 
-          <Button
-            variant="primary"
-            icon={<FileText size={18} />}
-            onClick={handleGenerateReport}
-            disabled={!selectedPerson || (periodType === 'personalizzato' && customMode === 'date' && (!customDateFrom || !customDateTo)) || (periodType === 'personalizzato' && customMode === 'mesi' && selectedCustomMonths.length === 0)}
-          >
-            Genera Report
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              variant="primary"
+              icon={<FileText size={18} />}
+              onClick={handleGenerateReport}
+              disabled={!selectedPerson || (periodType === 'personalizzato' && customMode === 'date' && (!customDateFrom || !customDateTo)) || (periodType === 'personalizzato' && customMode === 'mesi' && selectedCustomMonths.length === 0)}
+            >
+              Genera Report
+            </Button>
+            <Button
+              variant="outline"
+              icon={<ClipboardList size={18} />}
+              onClick={() => {
+                const person = selectedPerson ? state.people.find(p => p.id === selectedPerson) : null;
+                generateBlankMonthlyPdf({
+                  month: parseInt(selectedMonth),
+                  year: parseInt(selectedYear),
+                  personName: person ? `${person.surname} ${person.name}` : undefined,
+                });
+              }}
+            >
+              Scarica Modello Vuoto
+            </Button>
+          </div>
         </div>
 
         {noDataFound && (
