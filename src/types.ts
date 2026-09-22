@@ -1,6 +1,6 @@
 export type Role = 'docente' | 'dipendente' | 'amministratore';
 
-export type ExpenseType = 'treno' | 'supplemento_treno' | 'aereo' | 'mezzi_pubblici' | 'taxi' | 'parcheggio' | 'altro';
+export type ExpenseType = 'treno' | 'supplemento_treno' | 'aereo' | 'mezzi_pubblici' | 'taxi' | 'parcheggio' | 'pranzo' | 'cena' | 'altro';
 
 export interface Person {
   id: string;
@@ -189,5 +189,7 @@ export const EXPENSE_TYPE_LABELS: Record<ExpenseType, string> = {
   mezzi_pubblici: 'Biglietti mezzi pubblici',
   taxi: 'Taxi',
   parcheggio: 'Parcheggio',
+  pranzo: 'Pranzo',
+  cena: 'Cena',
   altro: 'Altro',
 };
