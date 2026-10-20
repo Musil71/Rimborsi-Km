@@ -90,6 +90,16 @@ Deno.serve(async (req: Request) => {
       if (!isAdmin && !personId) return json({ error: "Collega l'account a una persona" }, 400);
       if (await personTaken(personId)) return json({ error: "Questa persona ha già un account" }, 409);
 
+      const { data: existingAuth } = await admin
+        .from("authorized_signup_emails")
+        .select("email")
+        .eq("email", email)
+        .maybeSingle();
+      if (!existingAuth) {
+        const { error: authError } = await admin.from("authorized_signup_emails").insert({ email });
+        if (authError) throw authError;
+      }
+
       const { data: created, error } = await admin.auth.admin.createUser({
         email,
         password,
@@ -97,6 +107,7 @@ Deno.serve(async (req: Request) => {
       });
       if (error || !created?.user) {
         console.error("createUser failed", error);
+        if (!existingAuth) await admin.from("authorized_signup_emails").delete().eq("email", email);
         return json({ error: "Impossibile creare l'account. L'email potrebbe essere già in uso." }, 400);
       }
 
@@ -106,6 +117,7 @@ Deno.serve(async (req: Request) => {
       if (upsertError) {
         console.error("profile upsert failed", upsertError);
         await admin.auth.admin.deleteUser(created.user.id);
+        await admin.from("authorized_signup_emails").delete().eq("email", email);
         return json({ error: "Impossibile creare l'account" }, 500);
       }
       return json({ ok: true });
@@ -140,9 +152,12 @@ Deno.serve(async (req: Request) => {
         await admin.from(table).update({ created_by: null }).eq("created_by", userId);
         await admin.from(table).update({ modified_by: null }).eq("modified_by", userId);
       }
+      const { data: target } = await admin.auth.admin.getUserById(userId);
       await admin.from("user_profiles").delete().eq("id", userId);
       const { error } = await admin.auth.admin.deleteUser(userId);
       if (error) throw error;
+      const targetEmail = target?.user?.email?.toLowerCase();
+      if (targetEmail) await admin.from("authorized_signup_emails").delete().eq("email", targetEmail);
       return json({ ok: true });
     }
 
