@@ -39,11 +39,10 @@ const ForgotPasswordPage: React.FC = () => {
       const { error } = await resetPassword(email);
 
       if (error) {
-        showToast(error.message, 'error');
-      } else {
-        setEmailSent(true);
-        showToast('Email di recupero inviata con successo', 'success');
+        console.error('password reset request failed', error);
       }
+      setEmailSent(true);
+      showToast('Email di recupero inviata con successo', 'success');
     } catch (error) {
       showToast('Errore durante l\'invio dell\'email', 'error');
     } finally {

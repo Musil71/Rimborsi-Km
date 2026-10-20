@@ -59,7 +59,8 @@ const LoginPage: React.FC = () => {
         } else if (error.message.includes('Email not confirmed')) {
           showToast('Conferma la tua email prima di accedere', 'error');
         } else {
-          showToast(error.message, 'error');
+          console.error('sign in failed', error);
+          showToast('Accesso non riuscito. Riprova più tardi.', 'error');
         }
         setLoading(false);
       } else {

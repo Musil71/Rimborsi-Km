@@ -52,7 +52,8 @@ const ResetPasswordPage: React.FC = () => {
       const { error } = await updatePassword(password);
 
       if (error) {
-        showToast(error.message, 'error');
+        console.error('password update failed', error);
+        showToast('Impossibile aggiornare la password. Il link potrebbe essere scaduto: richiedine uno nuovo.', 'error');
       } else {
         showToast('Password aggiornata con successo', 'success');
         navigate('/login');
