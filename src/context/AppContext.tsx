@@ -7,6 +7,7 @@ import {
 import { format } from 'date-fns';
 import { it } from 'date-fns/locale';
 import { supabase } from '../lib/supabase';
+import { useAuth } from './AuthContext';
 
 interface AppContextType {
   state: AppState;
@@ -66,10 +67,20 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     vehicleRateHistory: [],
   });
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const userId = user?.id;
 
   useEffect(() => {
+    if (!userId) {
+      setState({
+        people: [], vehicles: [], trips: [], savedRoutes: [], tollBooths: [],
+        tripExpenses: [], accommodations: [], favoriteDestinations: [], vehicleRateHistory: [],
+      });
+      setLoading(false);
+      return;
+    }
     loadData();
-  }, []);
+  }, [userId]);
 
   const loadData = async () => {
     try {

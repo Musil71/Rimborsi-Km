@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import HomePage from './pages/HomePage';
 import PeoplePage from './pages/PeoplePage';
 import PersonForm from './pages/PersonForm';
@@ -10,19 +11,18 @@ import TripForm from './pages/TripForm';
 import ReportsPage from './pages/ReportsPage';
 import SavedRoutesPage from './pages/SavedRoutesPage';
 import LoginPage from './pages/LoginPage';
-import SignUpPage from './pages/SignUpPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ResetPasswordPage from './pages/ResetPasswordPage';
 import ExpensesPage from './pages/ExpensesPage';
 import AccommodationsPage from './pages/AccommodationsPage';
 import PersonTripsPage from './pages/PersonTripsPage';
 import VehicleRatesPage from './pages/VehicleRatesPage';
+import UsersPage from './pages/UsersPage';
 
 function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignUpPage />} />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
 
@@ -30,9 +30,9 @@ function App() {
         <Route index element={<HomePage />} />
 
         {/* Persone routes */}
-        <Route path="persone" element={<PeoplePage />} />
-        <Route path="persone/nuovo" element={<PersonForm />} />
-        <Route path="persone/:id" element={<PersonForm />} />
+        <Route path="persone" element={<AdminRoute><PeoplePage /></AdminRoute>} />
+        <Route path="persone/nuovo" element={<AdminRoute><PersonForm /></AdminRoute>} />
+        <Route path="persone/:id" element={<AdminRoute><PersonForm /></AdminRoute>} />
 
         {/* Tragitti routes */}
         <Route path="tragitti" element={<TripsPage />} />
@@ -53,7 +53,9 @@ function App() {
         <Route path="alloggi" element={<AccommodationsPage />} />
 
         {/* Tariffe routes */}
-        <Route path="tariffe" element={<VehicleRatesPage />} />
+        <Route path="tariffe" element={<AdminRoute><VehicleRatesPage /></AdminRoute>} />
+
+        <Route path="utenti" element={<AdminRoute><UsersPage /></AdminRoute>} />
 
       </Route>
     </Routes>

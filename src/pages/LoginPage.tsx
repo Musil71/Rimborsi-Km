@@ -144,13 +144,7 @@ const LoginPage: React.FC = () => {
 
           <div className="mt-6 text-center">
             <p className="text-gray-500 text-sm">
-              Non hai un account?{' '}
-              <Link
-                to="/signup"
-                className="text-teal-600 hover:text-teal-700 font-semibold transition-colors"
-              >
-                Registrati
-              </Link>
+              Non hai un account? Chiedilo all'amministratore.
             </p>
           </div>
         </div>

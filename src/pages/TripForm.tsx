@@ -7,6 +7,7 @@ import Input from '../components/Input';
 import Select from '../components/Select';
 import AutocompleteInput from '../components/AutocompleteInput';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { calculateDistance } from '../utils/distanceCalculator';
 import { Trip, Role, TripMeal, ExpenseType, EXPENSE_TYPE_LABELS } from '../types';
 import { ITFV_OFFICES, DEFAULT_OFFICE, getOfficePairDistance } from '../utils/itfvOffices';
@@ -79,12 +80,15 @@ const TripForm: React.FC = () => {
     searchTollStations,
     getVehicleRateForMonth,
   } = useAppContext();
+  const { user, checkIsAdmin } = useAuth();
+  const isAdmin = checkIsAdmin();
 
   const isEditing = !!id;
   const trip = isEditing ? state.trips.find((t) => t.id === id) : null;
   const isDuplicating = !!(location.state as any)?.duplicateTrip;
   const duplicateData = isDuplicating ? (location.state as any).duplicateTrip : null;
-  const preselectedPersonId = (location.state as any)?.preselectedPersonId as string | undefined;
+  const preselectedPersonId = ((location.state as any)?.preselectedPersonId as string | undefined)
+    ?? (!isAdmin ? user?.personId ?? undefined : undefined);
 
   const [formData, setFormData] = useState<FormData>({
     date: new Date().toISOString().split('T')[0],
@@ -223,7 +227,7 @@ const TripForm: React.FC = () => {
       updateAvailableVehicles(preselectedPersonId);
       updateAvailableRoles(preselectedPersonId);
     }
-  }, [preselectedPersonId, isEditing, isDuplicating]);
+  }, [preselectedPersonId, isEditing, isDuplicating, state.vehicles.length, state.people.length]);
 
   useEffect(() => {
     if (formData.hasToll && formData.tollEntryStation && formData.tollExitStation) {
@@ -708,6 +712,7 @@ const TripForm: React.FC = () => {
               value={formData.personId}
               onChange={handleChange}
               error={errors.personId}
+              disabled={!isAdmin}
               required
             />
           </div>

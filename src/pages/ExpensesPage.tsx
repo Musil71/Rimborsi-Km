@@ -6,6 +6,7 @@ import Modal from '../components/Modal';
 import Select from '../components/Select';
 import Input from '../components/Input';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { TripExpense, ExpenseType, EXPENSE_TYPE_LABELS } from '../types';
 
 const EXPENSE_TYPE_OPTIONS = Object.entries(EXPENSE_TYPE_LABELS).map(([value, label]) => ({ value, label }));
@@ -23,8 +24,8 @@ interface ExpenseFormData {
   notes: string;
 }
 
-const defaultForm = (): ExpenseFormData => ({
-  personId: '',
+const defaultForm = (personId = ''): ExpenseFormData => ({
+  personId,
   date: new Date().toISOString().split('T')[0],
   expenseType: 'treno',
   description: '',
@@ -36,11 +37,14 @@ const defaultForm = (): ExpenseFormData => ({
 
 const ExpensesPage: React.FC = () => {
   const { state, addTripExpense, updateTripExpense, deleteTripExpense, formatDate } = useAppContext();
+  const { user, checkIsAdmin } = useAuth();
+  const isAdmin = checkIsAdmin();
+  const ownPersonId = isAdmin ? '' : user?.personId ?? '';
 
   const [showForm, setShowForm] = useState(false);
   const [editingExpense, setEditingExpense] = useState<TripExpense | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState<ExpenseFormData>(defaultForm());
+  const [form, setForm] = useState<ExpenseFormData>(defaultForm(ownPersonId));
   const [saving, setSaving] = useState(false);
   const [filterPerson, setFilterPerson] = useState('');
   const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
@@ -69,7 +73,7 @@ const ExpensesPage: React.FC = () => {
 
   const openAdd = () => {
     setEditingExpense(null);
-    setForm(defaultForm());
+    setForm(defaultForm(ownPersonId));
     setShowForm(true);
   };
 
@@ -254,6 +258,7 @@ const ExpensesPage: React.FC = () => {
               ]}
               value={form.personId}
               onChange={e => setForm(f => ({ ...f, personId: e.target.value }))}
+              disabled={!isAdmin}
               required
             />
             <Input

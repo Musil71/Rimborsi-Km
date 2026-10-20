@@ -4,7 +4,6 @@ import { UserProfile, AuthState } from '../types';
 import { Session, User } from '@supabase/supabase-js';
 
 interface AuthContextType extends AuthState {
-  signUp: (email: string, password: string, personId?: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: Error | null }>;
@@ -89,38 +88,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signUp = async (email: string, password: string, personId?: string) => {
-    try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (signUpError) {
-        return { error: signUpError };
-      }
-
-      if (data.user) {
-        const { error: profileError } = await supabase
-          .from('user_profiles')
-          .insert({
-            id: data.user.id,
-            person_id: personId || null,
-            is_admin: false,
-          });
-
-        if (profileError) {
-          console.error('Error creating user profile:', profileError);
-          return { error: new Error('Failed to create user profile') };
-        }
-      }
-
-      return { error: null };
-    } catch (error) {
-      return { error: error as Error };
-    }
-  };
-
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({
@@ -188,7 +155,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     user,
     loading,
     session,
-    signUp,
     signIn,
     signOut,
     resetPassword,

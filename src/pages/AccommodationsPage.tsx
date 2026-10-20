@@ -6,6 +6,7 @@ import Modal from '../components/Modal';
 import Select from '../components/Select';
 import Input from '../components/Input';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 import { Accommodation } from '../types';
 
 interface AccommodationFormData {
@@ -17,8 +18,8 @@ interface AccommodationFormData {
   notes: string;
 }
 
-const defaultForm = (): AccommodationFormData => ({
-  personId: '',
+const defaultForm = (personId = ''): AccommodationFormData => ({
+  personId,
   dateFrom: new Date().toISOString().split('T')[0],
   dateTo: new Date().toISOString().split('T')[0],
   location: '',
@@ -28,11 +29,14 @@ const defaultForm = (): AccommodationFormData => ({
 
 const AccommodationsPage: React.FC = () => {
   const { state, addAccommodation, updateAccommodation, deleteAccommodation, formatDate } = useAppContext();
+  const { user, checkIsAdmin } = useAuth();
+  const isAdmin = checkIsAdmin();
+  const ownPersonId = isAdmin ? '' : user?.personId ?? '';
 
   const [showForm, setShowForm] = useState(false);
   const [editingAccommodation, setEditingAccommodation] = useState<Accommodation | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
-  const [form, setForm] = useState<AccommodationFormData>(defaultForm());
+  const [form, setForm] = useState<AccommodationFormData>(defaultForm(ownPersonId));
   const [saving, setSaving] = useState(false);
   const [filterPerson, setFilterPerson] = useState('');
   const [filterYear, setFilterYear] = useState(new Date().getFullYear().toString());
@@ -64,7 +68,7 @@ const AccommodationsPage: React.FC = () => {
 
   const openAdd = () => {
     setEditingAccommodation(null);
-    setForm(defaultForm());
+    setForm(defaultForm(ownPersonId));
     setShowForm(true);
   };
 
@@ -235,6 +239,7 @@ const AccommodationsPage: React.FC = () => {
               ]}
               value={form.personId}
               onChange={e => setForm(f => ({ ...f, personId: e.target.value }))}
+              disabled={!isAdmin}
               required
             />
             <div className="grid grid-cols-2 gap-4">

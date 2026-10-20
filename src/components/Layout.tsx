@@ -1,7 +1,7 @@
 import React from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import logoUrl from '/Logo_orizzontale.png';
-import { Home, Users, Map, BarChart3, Menu, X, LogOut, Plus, Receipt, BedDouble, Star, Gauge } from 'lucide-react';
+import { Home, Users, Map, BarChart3, Menu, X, LogOut, Plus, Receipt, BedDouble, Star, Gauge, UserCog } from 'lucide-react';
 import { useState } from 'react';
 import classNames from 'classnames';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,7 @@ const Layout: React.FC = () => {
   const [menuOpen, setMenuOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { user, signOut, checkIsAdmin } = useAuth();
   const { showToast } = useToast();
 
   const isActive = (path: string) => {
@@ -38,16 +38,19 @@ const Layout: React.FC = () => {
     }
   };
 
-  const navItems = [
+  const allNavItems = [
     { path: '/', label: 'Home', icon: <Home size={20} /> },
-    { path: '/persone', label: 'Persone', icon: <Users size={20} /> },
+    { path: '/persone', label: 'Persone', icon: <Users size={20} />, adminOnly: true },
     { path: '/tragitti', label: 'Trasferte', icon: <Map size={20} /> },
     { path: '/percorsi', label: 'Destinazioni', icon: <Star size={20} /> },
     { path: '/spese', label: 'Spese', icon: <Receipt size={20} /> },
     { path: '/alloggi', label: 'Alloggi', icon: <BedDouble size={20} /> },
-    { path: '/tariffe', label: 'Tariffe', icon: <Gauge size={20} /> },
+    { path: '/tariffe', label: 'Tariffe', icon: <Gauge size={20} />, adminOnly: true },
     { path: '/report', label: 'Report', icon: <BarChart3 size={20} /> },
+    { path: '/utenti', label: 'Utenti', icon: <UserCog size={20} />, adminOnly: true },
   ];
+  const isAdmin = checkIsAdmin();
+  const navItems = allNavItems.filter(item => !item.adminOnly || isAdmin);
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">

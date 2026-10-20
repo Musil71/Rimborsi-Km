@@ -3,9 +3,12 @@ import { Link } from 'react-router-dom';
 import { Users, Map, BarChart3, Route, Plus, ArrowRight } from 'lucide-react';
 import Card from '../components/Card';
 import { useAppContext } from '../context/AppContext';
+import { useAuth } from '../context/AuthContext';
 
 const HomePage: React.FC = () => {
   const { state } = useAppContext();
+  const { checkIsAdmin } = useAuth();
+  const isAdmin = checkIsAdmin();
 
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -17,13 +20,13 @@ const HomePage: React.FC = () => {
   });
 
   const stats = [
-    {
+    ...(isAdmin ? [{
       title: 'Persone',
       value: state.people.length,
       icon: <Users className="h-8 w-8 text-blue-500" />,
       link: '/persone',
       color: 'bg-blue-100'
-    },
+    }] : []),
     {
       title: 'Trasferte Totali',
       value: state.trips.length,
@@ -82,7 +85,7 @@ const HomePage: React.FC = () => {
         </div>
       </Link>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className={`grid grid-cols-1 md:grid-cols-2 ${isAdmin ? 'lg:grid-cols-4' : 'lg:grid-cols-3'} gap-6`}>
         {stats.map((stat) => (
           <Link key={stat.title} to={stat.link} className="transition-transform hover:scale-105">
             <Card className="h-full hover:shadow-lg transition-shadow">
@@ -120,7 +123,9 @@ const HomePage: React.FC = () => {
           <div>
             <h4 className="font-semibold text-gray-800 mb-2">Per iniziare:</h4>
             <ul className="list-disc list-inside text-gray-600 space-y-1">
-              <li>Aggiungi il personale e i loro veicoli in <Link to="/persone" className="text-teal-600 hover:underline">Persone</Link></li>
+              {isAdmin && (
+                <li>Aggiungi il personale e i loro veicoli in <Link to="/persone" className="text-teal-600 hover:underline">Persone</Link></li>
+              )}
               <li>Crea destinazioni abituali in <Link to="/percorsi" className="text-teal-600 hover:underline">Destinazioni Abituali</Link></li>
               <li>Registra le trasferte in <Link to="/tragitti" className="text-teal-600 hover:underline">Trasferte</Link></li>
               <li>Genera report mensili nella sezione <Link to="/report" className="text-teal-600 hover:underline">Report</Link></li>

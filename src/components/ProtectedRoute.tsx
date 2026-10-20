@@ -7,7 +7,7 @@ interface ProtectedRouteProps {
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -23,6 +23,25 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!user.isAdmin && !user.personId) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Account non ancora attivo</h2>
+          <p className="text-gray-600 mb-6">
+            Il tuo account non è ancora collegato a una persona. Chiedi all'amministratore di attivarlo.
+          </p>
+          <button
+            onClick={() => signOut()}
+            className="bg-teal-600 text-white px-6 py-2 rounded-lg hover:bg-teal-700 transition-colors"
+          >
+            Esci
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return <>{children}</>;
