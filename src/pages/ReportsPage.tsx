@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, MapPin, Pencil, ClipboardList } from 'lucide-react';
+import { FileText, User, Banknote, AlertTriangle, Download, Receipt, BedDouble, Utensils, MapPin, Pencil, ClipboardList, CalendarClock } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Button from '../components/Button';
@@ -8,6 +8,7 @@ import Select from '../components/Select';
 import Input from '../components/Input';
 import Table from '../components/Table';
 import QuickEditTripModal from '../components/QuickEditTripModal';
+import Modal from '../components/Modal';
 import { useAppContext } from '../context/AppContext';
 import { Trip, MonthlyReport, PeriodReport, ReportPeriodType, EXPENSE_TYPE_LABELS } from '../types';
 import { COMPANY_INFO } from '../utils/itfvOffices';
@@ -48,6 +49,7 @@ const ReportsPage: React.FC = () => {
   const [editingTrip, setEditingTrip] = useState<Trip | null>(null);
   const [customMode, setCustomMode] = useState<'mesi' | 'date'>('mesi');
   const [selectedCustomMonths, setSelectedCustomMonths] = useState<number[]>([]);
+  const [pendingPdfMode, setPendingPdfMode] = useState<null | { mode: 'include' | 'exclude' }>(null);
 
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: i.toString(),
@@ -385,11 +387,74 @@ const ReportsPage: React.FC = () => {
     return months.length > 1;
   };
 
+  const getReportEndDate = (r: AnyReport): Date | null => {
+    if (isPeriodReport(r)) return r.dateTo;
+    const m = r as MonthlyReport;
+    return new Date(m.year, m.month + 1, 0);
+  };
+
+  const getFutureEntries = (r: AnyReport): { trips: Trip[]; expenses: AnyReport['expenses']; accommodations: AnyReport['accommodations'] } => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    return {
+      trips: r.trips.filter(t => new Date(t.date) > today),
+      expenses: r.expenses.filter(e => new Date(e.date) > today),
+      accommodations: r.accommodations.filter(a => new Date(a.dateFrom) > today),
+    };
+  };
+
   const handleDownloadPDF = () => {
+    if (!report) return;
+
+    const periodEnd = getReportEndDate(report);
+    const future = getFutureEntries(report);
+    const futureCount = future.trips.length + future.expenses.length + future.accommodations.length;
+
+    if (periodEnd && periodEnd > new Date() && futureCount > 0) {
+      setPendingPdfMode({ mode: 'include' });
+      return;
+    }
+
+    generatePDF('include');
+  };
+
+  const excludeFutureEntries = (r: AnyReport): AnyReport => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+    const filteredTrips = r.trips.filter(t => new Date(t.date) <= today);
+    const filteredExpenses = r.expenses.filter(e => new Date(e.date) <= today);
+    const filteredAccommodations = r.accommodations.filter(a => new Date(a.dateFrom) <= today);
+    let totalDistance = 0, totalReimbursement = 0, totalTollFees = 0, totalMealReimbursement = 0;
+    filteredTrips.forEach(trip => {
+      const d = trip.isRoundTrip ? trip.distance * 2 : trip.distance;
+      totalDistance += d;
+      totalReimbursement += calcTripReimbursement(trip);
+      if (trip.hasToll && trip.tollAmount) totalTollFees += trip.isRoundTrip ? trip.tollAmount * 2 : trip.tollAmount;
+      if (trip.isRoundTrip && trip.returnTollAmount) totalTollFees += trip.returnTollAmount;
+      if (trip.meals && trip.meals.length > 0) trip.meals.forEach(m => { totalMealReimbursement += m.amount; });
+      else if (trip.hasMeal && trip.mealAmount) totalMealReimbursement += trip.mealAmount;
+    });
+    return {
+      ...r,
+      trips: filteredTrips,
+      expenses: filteredExpenses,
+      accommodations: filteredAccommodations,
+      totalDistance,
+      totalReimbursement,
+      totalTollFees,
+      totalMealReimbursement,
+      totalExpenses: filteredExpenses.reduce((s, e) => s + e.amount, 0),
+      totalAccommodations: filteredAccommodations.reduce((s, a) => s + a.amount, 0),
+    };
+  };
+
+  const generatePDF = (mode: 'include' | 'exclude') => {
     if (!report) return;
 
     const person = getPerson(report.personId);
     if (!person) return;
+
+    const reportToUse = mode === 'exclude' ? excludeFutureEntries(report) : report;
 
     const doc = new jsPDF();
     const periodLabel = getReportPeriodLabel(report);
@@ -450,17 +515,17 @@ const ReportsPage: React.FC = () => {
 
     let y = 34;
 
-    const totalGeneral = report.totalReimbursement + report.totalTollFees + report.totalMealReimbursement + report.totalExpenses + report.totalAccommodations;
+    const totalGeneral = reportToUse.totalReimbursement + reportToUse.totalTollFees + reportToUse.totalMealReimbursement + reportToUse.totalExpenses + reportToUse.totalAccommodations;
 
     autoTable(doc, {
       startY: y,
       head: [['Voce di Spesa', 'Importo']],
       body: [
-        ['Rimborso Chilometrico', `${report.totalReimbursement.toFixed(2)} €`],
-        ['Pedaggi Autostradali', `${report.totalTollFees.toFixed(2)} €`],
-        ['Rimborsi Vitto (Pasti)', `${report.totalMealReimbursement.toFixed(2)} €`],
-        ['Spese Documentate', `${report.totalExpenses.toFixed(2)} €`],
-        ['Alloggi', `${report.totalAccommodations.toFixed(2)} €`],
+        ['Rimborso Chilometrico', `${reportToUse.totalReimbursement.toFixed(2)} €`],
+        ['Pedaggi Autostradali', `${reportToUse.totalTollFees.toFixed(2)} €`],
+        ['Rimborsi Vitto (Pasti)', `${reportToUse.totalMealReimbursement.toFixed(2)} €`],
+        ['Spese Documentate', `${reportToUse.totalExpenses.toFixed(2)} €`],
+        ['Alloggi', `${reportToUse.totalAccommodations.toFixed(2)} €`],
       ],
       foot: [['TOTALE RIMBORSO SPESE', `${totalGeneral.toFixed(2)} €`]],
       theme: 'grid',
@@ -473,17 +538,17 @@ const ReportsPage: React.FC = () => {
 
     y = (doc as any).lastAutoTable.finalY + 10;
 
-    if (report.trips.length > 0) {
+    if (reportToUse.trips.length > 0) {
       doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...darkGray);
       doc.text('Rimborsi Chilometrici', 14, y);
       y += 4;
 
-      const multiMonth = isPeriodReport(report) && getMonthsInRange(report.dateFrom, report.dateTo).length > 1;
+      const multiMonth = isPeriodReport(reportToUse) && getMonthsInRange(reportToUse.dateFrom, reportToUse.dateTo).length > 1;
 
-      if (multiMonth && isPeriodReport(report)) {
-        const tripsByMonth = getTripsByMonth(report.trips, report.dateFrom, report.dateTo);
+      if (multiMonth && isPeriodReport(reportToUse)) {
+        const tripsByMonth = getTripsByMonth(reportToUse.trips, reportToUse.dateFrom, reportToUse.dateTo);
 
         for (const monthGroup of tripsByMonth) {
           if (y > 240) { doc.addPage(); y = 20; }
@@ -543,7 +608,7 @@ const ReportsPage: React.FC = () => {
         }
         y += 4;
       } else {
-        const singleMonthTrips = sortTripsChronological(report.trips);
+        const singleMonthTrips = sortTripsChronological(reportToUse.trips);
         const firstSingleTrip = singleMonthTrips[0];
         if (firstSingleTrip) {
           const td0 = new Date(firstSingleTrip.date);
@@ -594,7 +659,7 @@ const ReportsPage: React.FC = () => {
       }
     }
 
-    if (report.expenses.length > 0) {
+    if (reportToUse.expenses.length > 0) {
       if (y > 240) { doc.addPage(); y = 20; }
 
       doc.setFontSize(11);
@@ -603,10 +668,10 @@ const ReportsPage: React.FC = () => {
       doc.text('Spese di Viaggio e Trasferimento', 14, y);
       y += 4;
 
-      const multiMonth = isPeriodReport(report) && getMonthsInRange(report.dateFrom, report.dateTo).length > 1;
+      const multiMonth = isPeriodReport(reportToUse) && getMonthsInRange(reportToUse.dateFrom, reportToUse.dateTo).length > 1;
 
-      if (multiMonth && isPeriodReport(report)) {
-        const expensesByMonth = getExpensesByMonth(report.expenses, report.dateFrom, report.dateTo);
+      if (multiMonth && isPeriodReport(reportToUse)) {
+        const expensesByMonth = getExpensesByMonth(reportToUse.expenses, reportToUse.dateFrom, reportToUse.dateTo);
 
         for (const monthGroup of expensesByMonth) {
           if (y > 240) { doc.addPage(); y = 20; }
@@ -643,19 +708,19 @@ const ReportsPage: React.FC = () => {
         doc.setFontSize(9);
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(...darkGray);
-        doc.text(`Totale Spese Documentate: ${report.totalExpenses.toFixed(2)} €`, 196, y, { align: 'right' });
+        doc.text(`Totale Spese Documentate: ${reportToUse.totalExpenses.toFixed(2)} €`, 196, y, { align: 'right' });
         y += 10;
       } else {
         autoTable(doc, {
           startY: y,
           head: [['Data', 'Tipo', 'Dettaglio', 'Importo']],
-          body: report.expenses.map(e => [
+          body: reportToUse.expenses.map(e => [
             new Date(e.date).toLocaleDateString('it-IT'),
             EXPENSE_TYPE_LABELS[e.expenseType],
             (e.fromLocation && e.toLocation) ? `${e.fromLocation} -> ${e.toLocation}` : (e.description || '-'),
             `${e.amount.toFixed(2)} €`
           ]),
-          foot: [['', '', 'TOTALE', `${report.totalExpenses.toFixed(2)} €`]],
+          foot: [['', '', 'TOTALE', `${reportToUse.totalExpenses.toFixed(2)} €`]],
           theme: 'grid',
           headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 9, lineColor: medGray },
           bodyStyles: { textColor: darkGray, lineColor: lightGray },
@@ -669,7 +734,7 @@ const ReportsPage: React.FC = () => {
       }
     }
 
-    if (report.accommodations.length > 0) {
+    if (reportToUse.accommodations.length > 0) {
       if (y > 240) { doc.addPage(); y = 20; }
 
       doc.setFontSize(11);
@@ -681,12 +746,12 @@ const ReportsPage: React.FC = () => {
       autoTable(doc, {
         startY: y,
         head: [['Periodo', 'Luogo', 'Importo']],
-        body: report.accommodations.map(a => [
+        body: reportToUse.accommodations.map(a => [
           `${new Date(a.dateFrom).toLocaleDateString('it-IT')} -> ${new Date(a.dateTo).toLocaleDateString('it-IT')}`,
           a.location || '-',
           `${a.amount.toFixed(2)} €`
         ]),
-        foot: [['', 'TOTALE', `${report.totalAccommodations.toFixed(2)} €`]],
+        foot: [['', 'TOTALE', `${reportToUse.totalAccommodations.toFixed(2)} €`]],
         theme: 'grid',
         headStyles: { fillColor: lightGray, textColor: black, fontStyle: 'bold', fontSize: 9, lineColor: medGray },
         bodyStyles: { textColor: darkGray, lineColor: lightGray },
@@ -1458,6 +1523,59 @@ const ReportsPage: React.FC = () => {
         onClose={() => setEditingTrip(null)}
         onSaved={handleEditSaved}
       />
+
+      {pendingPdfMode && report && (() => {
+        const future = getFutureEntries(report);
+        const futureCount = future.trips.length + future.expenses.length + future.accommodations.length;
+        const periodEnd = getReportEndDate(report);
+        const parts: string[] = [];
+        if (future.trips.length > 0) parts.push(`${future.trips.length} ${future.trips.length === 1 ? 'trasferta' : 'trasferte'}`);
+        if (future.expenses.length > 0) parts.push(`${future.expenses.length} ${future.expenses.length === 1 ? 'spesa' : 'spese'}`);
+        if (future.accommodations.length > 0) parts.push(`${future.accommodations.length} ${future.accommodations.length === 1 ? 'alloggio' : 'alloggi'}`);
+        return (
+          <Modal
+            title="Periodo non ancora concluso"
+            onClose={() => setPendingPdfMode(null)}
+          >
+            <div className="flex items-start mb-4">
+              <CalendarClock className="h-6 w-6 text-amber-600 mt-0.5 mr-3 flex-shrink-0" />
+              <div className="text-sm text-gray-600 space-y-2">
+                <p>
+                  Il periodo selezionato non &egrave; ancora terminato
+                  {periodEnd ? ` (fino al ${formatDate(periodEnd.toISOString().slice(0, 10))})` : ''}
+                  , ma nel report sono presenti {futureCount} {futureCount === 1 ? 'voce' : 'voci'} con data futura: {parts.join(', ')}.
+                </p>
+                <p className="text-gray-500">
+                  Vuoi includerle nel PDF oppure scaricare il report solo con i dati fino a oggi?
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
+              <Button variant="secondary" onClick={() => setPendingPdfMode(null)}>
+                Annulla
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => {
+                  setPendingPdfMode(null);
+                  generatePDF('exclude');
+                }}
+              >
+                Escludi future
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  setPendingPdfMode(null);
+                  generatePDF('include');
+                }}
+              >
+                Includi tutto
+              </Button>
+            </div>
+          </Modal>
+        );
+      })()}
     </div>
   );
 };
