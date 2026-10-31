@@ -925,7 +925,9 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const inRange = (dateStr: string) => {
       const d = new Date(dateStr);
-      return d >= startDate && d <= endDate;
+      return d.getFullYear() >= startDate.getFullYear() && d.getFullYear() <= endDate.getFullYear() &&
+        new Date(d.getFullYear(), d.getMonth(), d.getDate()) >= new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()) &&
+        new Date(d.getFullYear(), d.getMonth(), d.getDate()) <= new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
     };
 
     const personTrips = state.trips.filter(t => t.personId === personId && inRange(t.date));
@@ -1068,7 +1070,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
     const inRange = (dateStr: string) => {
       const d = new Date(dateStr);
-      return d >= startDate && d <= endDate;
+      return d.getFullYear() === year && d.getMonth() === month;
     };
 
     const personTrips = state.trips.filter(t => t.personId === personId && inRange(t.date));
